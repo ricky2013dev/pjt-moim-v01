@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { seedInitialData, validateApplicationSchema } from './db.js';
 import { initPush } from './push.js';
+import { assertEncryptionKey } from './crypto.js';
 import authRoutes from './routes/auth.js';
 import memberRoutes from './routes/members.js';
 import announcementRoutes from './routes/announcements.js';
@@ -16,6 +17,8 @@ app.use(express.json({ limit: '1mb' }));
 app.use(cookieParser());
 
 const api = express.Router();
+// API data is per-user and changes often; never serve it from a cache.
+api.use((_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 api.use(authRoutes);
 api.use(announcementRoutes);
 api.use(messageRoutes);
@@ -40,6 +43,7 @@ app.use((err, _req, res, _next) => {
   res.status(status).json({ error: status >= 500 ? 'Something went wrong.' : err.message });
 });
 
+assertEncryptionKey();
 await validateApplicationSchema();
 await seedInitialData();
 await initPush();

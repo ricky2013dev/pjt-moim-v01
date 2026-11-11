@@ -1,17 +1,17 @@
-import { NavLink, Outlet, useMatch, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useEffect } from 'react';
 import Icon from './Icon.jsx';
 import { useAuth } from '../lib/auth.jsx';
 import { useBadges } from '../lib/badges.jsx';
 
-function Tab({ to, icon, label, badge, end }) {
+function Tab({ to, icon, label, badge, badgeClass = 'bg-rose-500', end }) {
   return (
     <NavLink to={to} end={end}
       className={({ isActive }) => `relative flex flex-1 flex-col items-center justify-center gap-0.5 rounded-xl py-2 text-[10.5px] font-semibold tracking-wide transition-all duration-200 ${isActive ? 'bg-gradient-to-br from-brand-500 to-sky-500 text-white shadow-md shadow-brand-500/30' : 'text-slate-500 hover:bg-brand-50 hover:text-brand-600'}`}>
       <span className="relative">
         <Icon name={icon} className="size-[21px]" />
         {badge > 0 && (
-          <span className="absolute -top-1.5 -right-2.5 min-w-[18px] rounded-full bg-rose-500 px-1 text-center text-[10px] font-bold leading-[18px] text-white ring-2 ring-white">
+          <span className={`absolute -top-1.5 -right-2.5 min-w-[18px] rounded-full ${badgeClass} px-1 text-center text-[10px] font-bold leading-[18px] text-white ring-2 ring-white`}>
             {badge > 99 ? '99+' : badge}
           </span>
         )}
@@ -23,9 +23,12 @@ function Tab({ to, icon, label, badge, end }) {
 
 export default function Layout() {
   const { me } = useAuth();
-  const { badges } = useBadges();
+  const { badges, refresh } = useBadges();
   const navigate = useNavigate();
-  const inThread = useMatch('/messages/:id');
+  const location = useLocation();
+
+  // Every navigation (including tapping the current tab again) re-checks unread counts.
+  useEffect(() => { refresh(); }, [location.key, refresh]);
 
   // Tapping a notification while the app is open navigates in place.
   useEffect(() => {
@@ -36,20 +39,19 @@ export default function Layout() {
 
   return (
     <div className="mx-auto flex min-h-full max-w-2xl flex-col">
-      <main className={`flex-1 ${inThread ? '' : 'pb-28'}`}>
+      {/* Keyed by location so each visit to a tab remounts the page and refetches its data. */}
+      <main key={location.key} className="flex-1 pb-28">
         <Outlet />
       </main>
-      {!inThread && (
-        <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
-          <div className="pointer-events-auto mx-auto flex max-w-md gap-1 rounded-2xl bg-white/95 p-1.5 shadow-[0_10px_30px_-8px_rgba(31,94,234,0.35)] ring-1 ring-brand-100 backdrop-blur">
-            <Tab to="/" end icon="home" label="News" badge={badges.announcements} />
-            <Tab to="/family" icon="users" label="Family" />
-            <Tab to="/messages" icon="chat" label="Messages" badge={badges.messages} />
-            <Tab to="/me" icon="user" label="Me" />
-            {me?.role === 'admin' && <Tab to="/admin" icon="shield" label="Admin" />}
-          </div>
-        </nav>
-      )}
+      <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
+        <div className="pointer-events-auto mx-auto flex max-w-md gap-1 rounded-2xl bg-white/95 p-1.5 shadow-[0_10px_30px_-8px_rgba(31,94,234,0.35)] ring-1 ring-brand-100 backdrop-blur">
+          <Tab to="/" end icon="home" label="News" badge={badges.announcements} />
+          <Tab to="/family" icon="users" label="Family" />
+          <Tab to="/messages" icon="chat" label="Messages" badge={badges.messages} badgeClass="bg-emerald-500" />
+          <Tab to="/me" icon="user" label="Me" />
+          {me?.role === 'admin' && <Tab to="/admin" icon="shield" label="Admin" />}
+        </div>
+      </nav>
     </div>
   );
 }

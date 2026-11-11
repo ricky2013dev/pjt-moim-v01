@@ -4,6 +4,9 @@ CREATE TABLE IF NOT EXISTS members (
   relationship     TEXT NOT NULL DEFAULT '',
   phone            TEXT NOT NULL DEFAULT '',
   email            TEXT NOT NULL DEFAULT '',
+  address          TEXT NOT NULL DEFAULT '',
+  note             TEXT NOT NULL DEFAULT '',
+  comment          TEXT NOT NULL DEFAULT '',
   role             TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin', 'member')),
   passcode_hash    TEXT NOT NULL,
   passcode_version INTEGER NOT NULL DEFAULT 1,
@@ -15,6 +18,11 @@ CREATE TABLE IF NOT EXISTS members (
   created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
   updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Columns added after the first release; keeps existing databases in step.
+ALTER TABLE members ADD COLUMN IF NOT EXISTS address TEXT NOT NULL DEFAULT '';
+ALTER TABLE members ADD COLUMN IF NOT EXISTS note    TEXT NOT NULL DEFAULT '';
+ALTER TABLE members ADD COLUMN IF NOT EXISTS comment TEXT NOT NULL DEFAULT '';
 
 CREATE TABLE IF NOT EXISTS settings (
   key   TEXT PRIMARY KEY,
@@ -44,16 +52,20 @@ CREATE TABLE IF NOT EXISTS announcement_reads (
   PRIMARY KEY (announcement_id, member_id)
 );
 
-CREATE TABLE IF NOT EXISTS messages (
-  id           SERIAL PRIMARY KEY,
-  sender_id    INTEGER NOT NULL REFERENCES members(id) ON DELETE CASCADE,
-  recipient_id INTEGER NOT NULL REFERENCES members(id) ON DELETE CASCADE,
-  body         TEXT NOT NULL,
-  created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-  read_at      TIMESTAMPTZ
+-- One family-wide group chat. sender_id is kept nullable so history survives
+-- when a member is removed.
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id         SERIAL PRIMARY KEY,
+  sender_id  INTEGER REFERENCES members(id) ON DELETE SET NULL,
+  body       TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
-CREATE INDEX IF NOT EXISTS messages_pair_idx ON messages (LEAST(sender_id, recipient_id), GREATEST(sender_id, recipient_id), created_at);
-CREATE INDEX IF NOT EXISTS messages_unread_idx ON messages (recipient_id) WHERE read_at IS NULL;
+
+-- Each member's read position in the group chat.
+CREATE TABLE IF NOT EXISTS chat_reads (
+  member_id    INTEGER PRIMARY KEY REFERENCES members(id) ON DELETE CASCADE,
+  last_read_id INTEGER NOT NULL DEFAULT 0
+);
 
 CREATE TABLE IF NOT EXISTS push_tokens (
   token      TEXT PRIMARY KEY,

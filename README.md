@@ -1,11 +1,11 @@
 # Moim — Family PWA
 
-React + Tailwind installable web app for the family: contacts, announcements, private 1:1 messages, and push notifications.
+React + Tailwind installable web app for the family: contacts, announcements, a family group chat, and push notifications.
 
 ## Local development
 
 ```bash
-cp .env.example .env        # then set JWT_SECRET (and Firebase keys if you want push)
+cp .env.example .env        # then set JWT_SECRET and MESSAGE_ENCRYPTION_KEY (and Firebase keys if you want push)
 npm install
 npm run db:up               # Postgres 16 in Docker on port 5433
 npm run db:setup            # create the development tables once
@@ -25,7 +25,7 @@ Production-style run: `npm run build && npm start` → everything served from ht
 | Staying signed in | A 1-year httpOnly cookie. It carries a passcode version, so changing a passcode signs out every other device. |
 | Admin | Add/edit/delete members (name, relationship, phone, email, photo, admin flag), set or reset any passcode, set the family default passcode (optionally resetting all members), create/edit/delete announcements for everyone or selected people. |
 | Members | Edit own name/phone/email, upload photo, change passcode, turn on notifications. |
-| Messages | Private one-to-one threads with read receipts; refreshes every few seconds. |
+| Messages | One group chat for all family members; refreshes every few seconds. Message text is encrypted (AES-256-GCM) before it's stored, so the database only holds ciphertext. |
 | Push | Firebase Cloud Messaging on new/updated announcements and new messages. |
 | Photos | Resized in the browser, re-encoded to 512px JPEG on the server, stored in Postgres (no file storage needed). |
 
@@ -38,10 +38,19 @@ Production-style run: `npm run build && npm start` → everything served from ht
 
 Push needs HTTPS (localhost is fine). On iPhone, notifications only work after **Share → Add to Home Screen** (iOS 16.4+).
 
+## Message encryption
+
+Chat message bodies are encrypted by the server with `MESSAGE_ENCRYPTION_KEY` before they go into `chat_messages.body`, and decrypted only when the API returns them to a signed-in member. Someone browsing the database sees `enc:v1:…` instead of the text.
+
+- Generate the key once: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`. The server won't start without it.
+- Store it only as an app secret, never in the database. **Back it up** — if it's lost, existing messages can't be recovered. Changing it makes older messages unreadable.
+- Messages saved before encryption was turned on stay readable. To encrypt them in place, run `npm run db:encrypt-messages` once (safe to repeat).
+- This protects against someone with database access only. Anyone who has both the database and the app's secrets (or the running server) can still read messages.
+
 ## Deploying (e.g. Replit)
 
 - Add a PostgreSQL database; set `DATABASE_URL` (and `DATABASE_SSL=true` if the host requires TLS).
-- Set the other variables from `.env.example` as Secrets — in particular a strong `JWT_SECRET` and `NODE_ENV=production`.
+- Set the other variables from `.env.example` as Secrets — in particular a strong `JWT_SECRET`, `MESSAGE_ENCRYPTION_KEY` and `NODE_ENV=production`. After the first deploy with encryption, run `npm run db:encrypt-messages` against production to encrypt existing messages.
 - Build: `npm install && npm run build` · Run: `npm start` (uses `PORT`).
 
 `.env` is git-ignored; only `.env.example` is committed.

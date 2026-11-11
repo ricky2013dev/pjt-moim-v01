@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { query } from '../db.js';
 import { requireAuth } from '../auth.js';
 import { notifyMembers } from '../push.js';
+import { decryptText, encryptText } from '../crypto.js';
 
 const r = Router();
 r.use(requireAuth);
@@ -10,7 +11,9 @@ r.get('/badges', async (req, res) => {
   const me = req.member.id;
   const { rows } = await query(
     `SELECT
-       (SELECT count(*)::int FROM messages WHERE recipient_id = $1 AND read_at IS NULL) AS messages,
+       (SELECT count(*)::int FROM chat_messages c
+          WHERE c.id > COALESCE((SELECT last_read_id FROM chat_reads WHERE member_id = $1), 0)
+            AND c.sender_id IS DISTINCT FROM $1) AS messages,
        (SELECT count(*)::int FROM announcements a
           WHERE (a.audience = 'all' OR EXISTS (SELECT 1 FROM announcement_targets t WHERE t.announcement_id = a.id AND t.member_id = $1))
             AND NOT EXISTS (SELECT 1 FROM announcement_reads rd WHERE rd.announcement_id = a.id AND rd.member_id = $1)
@@ -20,60 +23,66 @@ r.get('/badges', async (req, res) => {
   res.json(rows[0]);
 });
 
-// One row per person I've talked with: their latest message and my unread count.
-r.get('/conversations', async (req, res) => {
-  const { rows } = await query(
-    `SELECT DISTINCT ON (other_id) other_id, m.name, m.relationship, m.photo_version, (m.photo IS NOT NULL) AS has_photo,
-            x.body, x.created_at, x.sender_id,
-            (SELECT count(*)::int FROM messages u WHERE u.sender_id = other_id AND u.recipient_id = $1 AND u.read_at IS NULL) AS unread
-     FROM (SELECT *, CASE WHEN sender_id = $1 THEN recipient_id ELSE sender_id END AS other_id
-           FROM messages WHERE sender_id = $1 OR recipient_id = $1) x
-     JOIN members m ON m.id = x.other_id
-     ORDER BY other_id, x.created_at DESC`,
-    [req.member.id],
-  );
-  rows.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-  res.json(
-    rows.map((c) => ({
-      member: {
-        id: c.other_id,
-        name: c.name,
-        relationship: c.relationship,
-        photoUrl: c.has_photo ? `/api/members/${c.other_id}/photo?v=${c.photo_version}` : null,
-      },
-      last: { body: c.body, createdAt: c.created_at, fromMe: c.sender_id === req.member.id },
-      unread: c.unread,
-    })),
-  );
+function readBody(row) {
+  try {
+    return decryptText(row.body);
+  } catch (err) {
+    console.error(`Could not decrypt chat message ${row.id}:`, err.message);
+    return '[This message could not be decrypted]';
+  }
+}
+
+const toMessage = (row, me) => ({
+  id: row.id,
+  body: readBody(row),
+  createdAt: row.created_at,
+  fromMe: row.sender_id === me,
+  sender: row.sender_id
+    ? {
+        id: row.sender_id,
+        name: row.name,
+        photoUrl: row.has_photo ? `/api/members/${row.sender_id}/photo?v=${row.photo_version}` : null,
+      }
+    : null,
 });
 
-r.get('/conversations/:memberId', async (req, res) => {
+// Family group chat: everyone sees every message. `after` fetches only newer ones.
+r.get('/chat', async (req, res) => {
   const me = req.member.id;
-  const other = Number(req.params.memberId);
   const after = Number(req.query.after) || 0;
-  await query('UPDATE messages SET read_at = now() WHERE sender_id = $1 AND recipient_id = $2 AND read_at IS NULL', [other, me]);
   const { rows } = await query(
-    `SELECT id, sender_id, body, created_at, read_at FROM messages
-     WHERE ((sender_id = $1 AND recipient_id = $2) OR (sender_id = $2 AND recipient_id = $1)) AND id > $3
-     ORDER BY id DESC LIMIT 200`,
-    [me, other, after],
+    `SELECT c.id, c.sender_id, c.body, c.created_at,
+            m.name, m.photo_version, (m.photo IS NOT NULL) AS has_photo
+     FROM chat_messages c LEFT JOIN members m ON m.id = c.sender_id
+     WHERE c.id > $1
+     ORDER BY c.id DESC LIMIT 200`,
+    [after],
   );
-  res.json(rows.reverse().map((m) => ({ id: m.id, fromMe: m.sender_id === me, body: m.body, createdAt: m.created_at, readAt: m.read_at })));
+  if (rows.length) {
+    await query(
+      `INSERT INTO chat_reads (member_id, last_read_id) VALUES ($1, $2)
+       ON CONFLICT (member_id) DO UPDATE SET last_read_id = GREATEST(chat_reads.last_read_id, EXCLUDED.last_read_id)`,
+      [me, rows[0].id],
+    );
+  }
+  res.json(rows.reverse().map((row) => toMessage(row, me)));
 });
 
-r.post('/conversations/:memberId', async (req, res) => {
-  const other = Number(req.params.memberId);
+r.post('/chat', async (req, res) => {
+  const me = req.member;
   const body = String(req.body?.body || '').trim().slice(0, 4000);
   if (!body) return res.status(400).json({ error: 'Message is empty.' });
-  if (other === req.member.id) return res.status(400).json({ error: 'You cannot message yourself.' });
-  const { rowCount } = await query('SELECT 1 FROM members WHERE id = $1', [other]);
-  if (!rowCount) return res.status(404).json({ error: 'Member not found' });
   const { rows } = await query(
-    `INSERT INTO messages (sender_id, recipient_id, body) VALUES ($1, $2, $3) RETURNING id, body, created_at`,
-    [req.member.id, other, body],
+    `INSERT INTO chat_messages (sender_id, body) VALUES ($1, $2) RETURNING id, sender_id, body, created_at`,
+    [me.id, encryptText(body)],
   );
-  notifyMembers([other], { title: `💬 ${req.member.name}`, body, url: `/messages/${req.member.id}` });
-  res.status(201).json({ id: rows[0].id, fromMe: true, body: rows[0].body, createdAt: rows[0].created_at, readAt: null });
+  const { rows: others } = await query('SELECT id FROM members WHERE id <> $1', [me.id]);
+  notifyMembers(others.map((o) => o.id), { title: `💬 ${me.name}`, body, url: '/messages' });
+  const { rows: sender } = await query(
+    'SELECT name, photo_version, (photo IS NOT NULL) AS has_photo FROM members WHERE id = $1',
+    [me.id],
+  );
+  res.status(201).json(toMessage({ ...rows[0], ...sender[0] }, me.id));
 });
 
 export default r;

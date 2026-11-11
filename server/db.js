@@ -16,9 +16,11 @@ const REQUIRED_APPLICATION_COLUMNS = {
   members: [
     'id',
     'name',
-    'relationship',
     'phone',
     'email',
+    'address',
+    'note',
+    'comment',
     'role',
     'passcode_hash',
     'passcode_version',
@@ -34,7 +36,8 @@ const REQUIRED_APPLICATION_COLUMNS = {
   announcements: ['id', 'title', 'body', 'audience', 'author_id', 'created_at', 'updated_at'],
   announcement_targets: ['announcement_id', 'member_id'],
   announcement_reads: ['announcement_id', 'member_id', 'read_at'],
-  messages: ['id', 'sender_id', 'recipient_id', 'body', 'created_at', 'read_at'],
+  chat_messages: ['id', 'sender_id', 'body', 'created_at'],
+  chat_reads: ['member_id', 'last_read_id'],
   push_tokens: ['token', 'member_id', 'created_at'],
 };
 
@@ -103,7 +106,7 @@ export async function seedInitialData() {
     const pin = process.env.ADMIN_PASSCODE;
     if (!/^\d{4}$/.test(pin || '')) throw new Error('Set ADMIN_PASSCODE to four digits in Secrets.');
     await query(
-      `INSERT INTO members (name, relationship, role, passcode_hash) VALUES ($1, 'Admin', 'admin', $2)`,
+      `INSERT INTO members (name, role, passcode_hash) VALUES ($1, 'admin', $2)`,
       [name, await bcrypt.hash(pin, 10)],
     );
     console.log(`Created admin "${name}". Log in with the ADMIN_PASSCODE from your env file.`);

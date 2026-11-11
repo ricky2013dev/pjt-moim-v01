@@ -11,7 +11,7 @@ const LOCK_MINUTES = 5;
 
 // Names only, for the "who are you?" picker on the sign-in screen.
 r.get('/auth/members', async (_req, res) => {
-  const { rows } = await query(`SELECT id, name, relationship FROM members ORDER BY role = 'admin' DESC, name`);
+  const { rows } = await query(`SELECT id, name FROM members ORDER BY role = 'admin' DESC, name`);
   res.json(rows);
 });
 

@@ -9,7 +9,7 @@ export function BadgeProvider({ children }) {
 
   useEffect(() => {
     refresh();
-    const id = setInterval(refresh, 30000);
+    const id = setInterval(refresh, 15000);
     const onVisible = () => document.visibilityState === 'visible' && refresh();
     const onSw = (e) => e.data?.type === 'moim-push' && refresh();
     document.addEventListener('visibilitychange', onVisible);

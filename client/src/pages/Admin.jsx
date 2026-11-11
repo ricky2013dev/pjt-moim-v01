@@ -51,7 +51,7 @@ function MembersTab({ members, reload }) {
                   {m.name}
                   {m.role === 'admin' && <span className="ml-2 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-bold text-brand-700">Admin</span>}
                 </p>
-                <p className="truncate text-sm text-muted">{[m.relationship, m.phone].filter(Boolean).join(' · ') || '—'}</p>
+                <p className="truncate text-sm text-muted">{m.phone || m.email || '—'}</p>
               </div>
               <Icon name="edit" className="size-5 text-muted" />
             </button>
@@ -68,7 +68,7 @@ function MemberEditor({ target, onClose, reload }) {
   const isNew = target === 'new';
   const [member, setMember] = useState(isNew ? null : target);
   const [form, setForm] = useState(() => ({
-    name: target?.name || '', relationship: target?.relationship || '', phone: target?.phone || '', email: target?.email || '', role: target?.role || 'member',
+    name: target?.name || '', phone: target?.phone || '', email: target?.email || '', address: target?.address || '', note: target?.note || '', comment: target?.comment || '', role: target?.role || 'member',
   }));
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -131,12 +131,11 @@ function MemberEditor({ target, onClose, reload }) {
           )}
           <form id="member-form" onSubmit={save} className="space-y-4">
             <div><label className="label">Name *</label><input className="input" required value={form.name} onChange={set('name')} placeholder="e.g. Grandma Kim" autoFocus={isNew} /></div>
-            <div><label className="label">Relationship</label><input className="input" value={form.relationship} onChange={set('relationship')} placeholder="e.g. Grandmother, Son, Aunt" list="relationships" /></div>
-            <datalist id="relationships">
-              {['Father', 'Mother', 'Son', 'Daughter', 'Grandfather', 'Grandmother', 'Brother', 'Sister', 'Uncle', 'Aunt', 'Cousin', 'Spouse'].map((r) => <option key={r} value={r} />)}
-            </datalist>
             <div><label className="label">Phone</label><input className="input" type="tel" inputMode="tel" value={form.phone} onChange={set('phone')} /></div>
             <div><label className="label">Email</label><input className="input" type="email" value={form.email} onChange={set('email')} /></div>
+            <div><label className="label">Address</label><input className="input" value={form.address} onChange={set('address')} placeholder="Street, city" /></div>
+            <div><label className="label">Note</label><textarea className="input min-h-20" rows={3} value={form.note} onChange={set('note')} /></div>
+            <div><label className="label">Comment</label><textarea className="input min-h-20" rows={3} value={form.comment} onChange={set('comment')} /></div>
             <label className={`flex items-center gap-3 ${isSelf ? 'opacity-50' : ''}`}>
               <input type="checkbox" className="size-5 accent-brand-600" disabled={isSelf} checked={form.role === 'admin'}
                 onChange={(e) => setForm({ ...form, role: e.target.checked ? 'admin' : 'member' })} />
@@ -255,7 +254,6 @@ function AnnouncementEditor({ target, members, onClose, onSaved }) {
                   <input type="checkbox" className="size-5 accent-brand-600" checked={ids.has(m.id)} onChange={() => toggle(m.id)} />
                   <Avatar member={m} size="size-9" className="text-sm" />
                   <span className="flex-1 font-medium">{m.name}</span>
-                  <span className="text-sm text-muted">{m.relationship}</span>
                 </label>
               </li>
             ))}

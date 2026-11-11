@@ -7,18 +7,31 @@ import NotificationPrompt from '../components/NotificationPrompt.jsx';
 
 export default function News() {
   const { me } = useAuth();
-  const { refresh } = useBadges();
+  const { badges, refresh } = useBadges();
   const [items, setItems] = useState(null);
   const [error, setError] = useState('');
 
-  const load = () => api('/announcements').then(setItems).catch((e) => setError(e.message));
+  // Load, then mark exactly what is now on screen as read.
+  const load = () => api('/announcements')
+    .then((list) => {
+      setItems(list);
+      const unread = list.filter((a) => !a.read).map((a) => a.id);
+      if (unread.length) api('/announcements/read-all', { method: 'POST', body: { ids: unread } }).then(refresh).catch(() => {});
+    })
+    .catch((e) => setError(e.message));
 
   useEffect(() => {
-    load().then(() => api('/announcements/read-all', { method: 'POST' }).then(refresh).catch(() => {}));
+    load();
     const onSw = (e) => e.data?.type === 'moim-push' && load();
     navigator.serviceWorker?.addEventListener('message', onSw);
     return () => navigator.serviceWorker?.removeEventListener('message', onSw);
   }, []);
+
+  // The badge poll can spot new news before (or without) a push reaching this page.
+  // Reload so the list matches the badge; load() marks them read, dropping the badge back to 0.
+  useEffect(() => {
+    if (badges.announcements > 0 && items) load();
+  }, [badges.announcements]);
 
   return (
     <>

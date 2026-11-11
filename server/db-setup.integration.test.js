@@ -161,8 +161,9 @@ test('fresh development setup and production-style startup do not run startup DD
     'announcement_reads',
     'announcement_targets',
     'announcements',
+    'chat_messages',
+    'chat_reads',
     'members',
-    'messages',
     'push_tokens',
     'settings',
   ]);
@@ -227,7 +228,7 @@ test('fresh development setup and production-style startup do not run startup DD
   assert.match(startupResult.output, /Database schema is incomplete/);
   assert.match(
     startupResult.output,
-    /Missing required tables: announcements, announcement_targets, announcement_reads, messages, push_tokens/,
+    /Missing required tables: announcements, announcement_targets, announcement_reads, chat_messages, chat_reads, push_tokens/,
   );
   assert.doesNotMatch(startupResult.output, /API listening on/);
 
@@ -265,7 +266,7 @@ test('fresh development setup and production-style startup do not run startup DD
   try {
     await removeColumns.connect();
     await removeColumns.query('ALTER TABLE members DROP COLUMN phone');
-    await removeColumns.query('ALTER TABLE messages DROP COLUMN body');
+    await removeColumns.query('ALTER TABLE chat_messages DROP COLUMN body');
   } finally {
     await removeColumns.end();
   }
@@ -297,7 +298,7 @@ test('fresh development setup and production-style startup do not run startup DD
   const columnCheckResult = await waitForExit(columnCheckServer);
   assert.notEqual(columnCheckResult.code, 0, 'startup should fail when required columns are missing');
   assert.match(columnCheckResult.output, /Database schema is incomplete/);
-  assert.match(columnCheckResult.output, /Missing required columns: members\.phone, messages\.body/);
+  assert.match(columnCheckResult.output, /Missing required columns: members\.phone, chat_messages\.body/);
   assert.doesNotMatch(columnCheckResult.output, /API listening on/);
 
   const afterColumnCheck = new Client({ connectionString: incompleteColumnUrl });

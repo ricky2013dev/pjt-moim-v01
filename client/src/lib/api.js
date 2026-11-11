@@ -12,6 +12,7 @@ export async function api(path, { method = 'GET', body, form } = {}) {
   const res = await fetch(`/api${path}`, {
     method,
     credentials: 'same-origin',
+    cache: 'no-store',
     headers: body !== undefined ? { 'Content-Type': 'application/json' } : undefined,
     body: form ?? (body !== undefined ? JSON.stringify(body) : undefined),
   });
@@ -53,3 +54,6 @@ export function timeAgo(iso) {
   if (s < 7 * 86400) return `${Math.floor(s / 86400)}d ago`;
   return new Date(iso).toLocaleDateString();
 }
+
+// Opens the address in the phone's map app (or Google Maps in a browser).
+export const mapUrl = (address) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;

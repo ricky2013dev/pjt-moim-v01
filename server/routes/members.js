@@ -7,15 +7,17 @@ import { upload, savePhoto, removePhoto } from '../photos.js';
 const r = Router();
 r.use(requireAuth);
 
-const COLS = 'id, name, relationship, phone, email, role, photo_version, (photo IS NOT NULL) AS has_photo';
+const COLS = 'id, name, phone, email, address, note, comment, role, photo_version, (photo IS NOT NULL) AS has_photo';
 
 export function publicMember(m) {
   return {
     id: m.id,
     name: m.name,
-    relationship: m.relationship,
     phone: m.phone,
     email: m.email,
+    address: m.address,
+    note: m.note,
+    comment: m.comment,
     role: m.role,
     photoUrl: (m.has_photo ?? m.photo != null) ? `/api/members/${m.id}/photo?v=${m.photo_version}` : null,
   };
@@ -23,8 +25,11 @@ export function publicMember(m) {
 
 function clean(body, { requireName } = {}) {
   const out = {};
-  for (const k of ['name', 'relationship', 'phone', 'email']) {
+  for (const k of ['name', 'phone', 'email', 'address']) {
     if (body[k] !== undefined) out[k] = String(body[k]).trim().slice(0, 200);
+  }
+  for (const k of ['note', 'comment']) {
+    if (body[k] !== undefined) out[k] = String(body[k]).trim().slice(0, 2000);
   }
   if ((requireName || out.name !== undefined) && !out.name) {
     const err = new Error('Name is required.');
@@ -74,8 +79,7 @@ r.get('/members/:id/photo', async (req, res) => {
 
 // ---- My profile ----
 r.patch('/me', async (req, res) => {
-  const { name, phone, email } = clean(req.body || {});
-  await updateMember(req.member.id, Object.fromEntries(Object.entries({ name, phone, email }).filter(([, v]) => v !== undefined)));
+  await updateMember(req.member.id, clean(req.body || {}));
   res.json(await getMember(req.member.id));
 });
 
@@ -125,9 +129,10 @@ r.post('/admin/members', requireAdmin, async (req, res) => {
   const role = req.body?.role === 'admin' ? 'admin' : 'member';
   const hash = await getSetting('default_passcode_hash');
   const { rows } = await query(
-    `INSERT INTO members (name, relationship, phone, email, role, passcode_hash)
-     VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
-    [fields.name, fields.relationship || '', fields.phone || '', fields.email || '', role, hash],
+    `INSERT INTO members (name, phone, email, address, note, comment, role, passcode_hash)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
+    [fields.name, fields.phone || '', fields.email || '',
+      fields.address || '', fields.note || '', fields.comment || '', role, hash],
   );
   res.status(201).json(await getMember(rows[0].id));
 });

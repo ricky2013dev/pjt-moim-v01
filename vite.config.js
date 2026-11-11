@@ -1,13 +1,17 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { VitePWA } from 'vite-plugin-pwa';
+
+// Vite doesn't put .env into process.env for the config, so load it here.
+// WEB_PORT lets local dev avoid port 5000 (taken by macOS AirPlay Receiver).
+const env = { ...loadEnv('development', process.cwd(), ''), ...process.env };
 
 export default defineConfig({
   root: 'client',
   build: { outDir: '../dist', emptyOutDir: true },
   server: {
-    port: 5000,
+    port: Number(env.WEB_PORT) || 5000,
     strictPort: true,
     host: true,
     allowedHosts: true,

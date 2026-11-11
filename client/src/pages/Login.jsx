@@ -63,7 +63,6 @@ export default function Login() {
                 className="card flex flex-col items-center gap-2 p-4 transition hover:-translate-y-0.5 hover:shadow-md hover:ring-brand-200 active:scale-[0.97]">
                 <Avatar member={m} size="size-14" className="text-xl" />
                 <span className="w-full truncate font-semibold">{m.name}</span>
-                {m.relationship && <span className="-mt-2 w-full truncate text-xs text-muted">{m.relationship}</span>}
               </button>
             ))}
           </div>

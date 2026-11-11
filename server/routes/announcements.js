@@ -29,11 +29,14 @@ r.get('/announcements', async (req, res) => {
 });
 
 r.post('/announcements/read-all', async (req, res) => {
+  // `ids` limits this to what the client actually displayed, so an announcement
+  // posted in the meantime still counts as unread.
+  const ids = Array.isArray(req.body?.ids) ? req.body.ids.map(Number).filter(Number.isInteger) : null;
   await query(
     `INSERT INTO announcement_reads (announcement_id, member_id)
-     SELECT a.id, $1 FROM announcements a WHERE ${VISIBLE}
+     SELECT a.id, $1 FROM announcements a WHERE ${VISIBLE} AND ($2::int[] IS NULL OR a.id = ANY($2))
      ON CONFLICT DO NOTHING`,
-    [req.member.id],
+    [req.member.id, ids],
   );
   res.json({ ok: true });
 });

@@ -72,13 +72,13 @@ function NotificationsRow() {
 
 export default function Me() {
   const { me, setMe, logout } = useAuth();
-  const [form, setForm] = useState({ name: me.name, phone: me.phone, email: me.email });
+  const [form, setForm] = useState({ name: me.name, phone: me.phone, email: me.email, address: me.address, note: me.note, comment: me.comment });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
   const [pinOpen, setPinOpen] = useState(false);
 
-  const dirty = form.name !== me.name || form.phone !== me.phone || form.email !== me.email;
+  const dirty = Object.keys(form).some((k) => form[k] !== me[k]);
   const save = async (e) => {
     e.preventDefault();
     setSaving(true); setError(''); setSaved(false);
@@ -99,7 +99,9 @@ export default function Me() {
           <div><label className="label">Name</label><input className="input" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
           <div><label className="label">Phone</label><input className="input" type="tel" inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="010-0000-0000" /></div>
           <div><label className="label">Email</label><input className="input" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="you@example.com" /></div>
-          {me.relationship && <p className="text-sm text-muted">Relationship: <b className="text-ink">{me.relationship}</b> (set by admin)</p>}
+          <div><label className="label">Address</label><input className="input" autoComplete="street-address" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Street, city" /></div>
+          <div><label className="label">Note</label><textarea className="input min-h-20" rows={3} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} /></div>
+          <div><label className="label">Comment</label><textarea className="input min-h-20" rows={3} value={form.comment} onChange={(e) => setForm({ ...form, comment: e.target.value })} /></div>
           <ErrorText>{error}</ErrorText>
           <button className="btn-primary w-full" disabled={!dirty || saving}>{saving ? 'Saving…' : saved && !dirty ? <><Icon name="check" className="size-5" />Saved</> : 'Save changes'}</button>
         </form>
