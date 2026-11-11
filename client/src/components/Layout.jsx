@@ -1,5 +1,5 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../lib/api.js';
 import Icon from './Icon.jsx';
 import { useAuth } from '../lib/auth.jsx';
@@ -71,7 +71,28 @@ export default function Layout() {
   );
 }
 
-export function PageHeader({ title, subtitle, action, back }) {
+// Today's date and time, ticking over on each new minute.
+function Clock() {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    let id;
+    const tick = () => {
+      setNow(new Date());
+      id = setTimeout(tick, 60_000 - (Date.now() % 60_000));
+    };
+    id = setTimeout(tick, 60_000 - (Date.now() % 60_000));
+    return () => clearTimeout(id);
+  }, []);
+  return (
+    <p className="shrink-0 text-right text-[12px] font-semibold text-white/85">
+      {now.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+      <span className="mx-1.5 text-white/50">·</span>
+      {now.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+    </p>
+  );
+}
+
+export function PageHeader({ title, subtitle, action, back, showDate }) {
   const navigate = useNavigate();
   return (
     <header className="pt-safe sticky top-0 z-30 mb-5 overflow-hidden rounded-b-[28px] bg-gradient-to-br from-brand-600 via-brand-500 to-sky-400 text-white shadow-[0_8px_24px_-8px_rgba(31,94,234,0.5)]">
@@ -86,7 +107,12 @@ export function PageHeader({ title, subtitle, action, back }) {
           </button>
         )}
         <div className="min-w-0 flex-1">
-          {!back && <p className="mb-0.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/75">Moim</p>}
+          {!back && (
+            <div className="mb-0.5 flex items-baseline justify-between gap-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/75">Moim</p>
+              {showDate && <Clock />}
+            </div>
+          )}
           <h1 className="truncate text-[22px] font-bold leading-tight tracking-tight">{title}</h1>
           {subtitle && <p className="mt-0.5 truncate text-[13px] text-white/85">{subtitle}</p>}
         </div>
