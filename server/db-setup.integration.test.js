@@ -94,6 +94,7 @@ test('fresh development setup and production-style startup do not run startup DD
   };
   const developmentSchema = `setup_test_${process.pid}_${randomBytes(5).toString('hex')}`;
   const productionStyleSchema = `startup_test_${process.pid}_${randomBytes(5).toString('hex')}`;
+  const incompleteColumnSchema = `columns_test_${process.pid}_${randomBytes(5).toString('hex')}`;
   let db;
   let server;
 
@@ -115,6 +116,7 @@ test('fresh development setup and production-style startup do not run startup DD
       await cleanup.connect();
       await cleanup.query(`DROP SCHEMA IF EXISTS "${developmentSchema}" CASCADE`);
       await cleanup.query(`DROP SCHEMA IF EXISTS "${productionStyleSchema}" CASCADE`);
+      await cleanup.query(`DROP SCHEMA IF EXISTS "${incompleteColumnSchema}" CASCADE`);
     } finally {
       await cleanup.end();
     }
@@ -130,6 +132,7 @@ test('fresh development setup and production-style startup do not run startup DD
     await setup.connect();
     await setup.query(`CREATE SCHEMA "${developmentSchema}"`);
     await setup.query(`CREATE SCHEMA "${productionStyleSchema}"`);
+    await setup.query(`CREATE SCHEMA "${incompleteColumnSchema}"`);
   } finally {
     await setup.end();
   }
@@ -246,5 +249,68 @@ test('fresh development setup and production-style startup do not run startup DD
     assert.deepEqual(productionStyleAdmins, [], 'failed startup should not seed an admin');
   } finally {
     await verify.end();
+  }
+
+  const incompleteColumnUrl = databaseUrlForSchema(originalEnvironment.DATABASE_URL, incompleteColumnSchema);
+  execFileSync(process.execPath, ['server/setup-db.js'], {
+    env: {
+      ...process.env,
+      DATABASE_URL: incompleteColumnUrl,
+      NODE_ENV: 'development',
+    },
+    encoding: 'utf8',
+  });
+
+  const removeColumns = new Client({ connectionString: incompleteColumnUrl });
+  try {
+    await removeColumns.connect();
+    await removeColumns.query('ALTER TABLE members DROP COLUMN phone');
+    await removeColumns.query('ALTER TABLE messages DROP COLUMN body');
+  } finally {
+    await removeColumns.end();
+  }
+
+  const beforeColumnCheck = new Client({ connectionString: incompleteColumnUrl });
+  let incompleteColumnSchemaBefore;
+  try {
+    await beforeColumnCheck.connect();
+    incompleteColumnSchemaBefore = await schemaSnapshot(beforeColumnCheck, incompleteColumnSchema);
+  } finally {
+    await beforeColumnCheck.end();
+  }
+
+  const columnCheckPort = await reservePort();
+  const columnCheckServer = spawn(process.execPath, ['server/index.js'], {
+    env: {
+      ...process.env,
+      DATABASE_URL: incompleteColumnUrl,
+      NODE_ENV: 'production',
+      ADMIN_NAME: 'Incomplete Schema Test Admin',
+      ADMIN_PASSCODE: '2468',
+      DEFAULT_PASSCODE: '8642',
+      JWT_SECRET: 'incomplete-schema-test-secret',
+      PORT: String(columnCheckPort),
+      FIREBASE_SERVICE_ACCOUNT: '',
+    },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  const columnCheckResult = await waitForExit(columnCheckServer);
+  assert.notEqual(columnCheckResult.code, 0, 'startup should fail when required columns are missing');
+  assert.match(columnCheckResult.output, /Database schema is incomplete/);
+  assert.match(columnCheckResult.output, /Missing required columns: members\.phone, messages\.body/);
+  assert.doesNotMatch(columnCheckResult.output, /API listening on/);
+
+  const afterColumnCheck = new Client({ connectionString: incompleteColumnUrl });
+  try {
+    await afterColumnCheck.connect();
+    const incompleteColumnSchemaAfter = await schemaSnapshot(afterColumnCheck, incompleteColumnSchema);
+    assert.deepEqual(incompleteColumnSchemaAfter, incompleteColumnSchemaBefore);
+
+    const { rows: incompleteColumnAdmins } = await afterColumnCheck.query(
+      `SELECT name, role FROM members WHERE role = 'admin'`,
+    );
+    assert.deepEqual(incompleteColumnAdmins, [], 'failed startup should not seed an admin');
+  } finally {
+    await afterColumnCheck.end();
   }
 });
