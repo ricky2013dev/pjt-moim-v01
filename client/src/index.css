@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-50: #eff5ff;
+  --color-brand-100: #dbe7fe;
+  --color-brand-200: #bfd4fe;
+  --color-brand-500: #3b76f6;
+  --color-brand-600: #1f5eea;
+  --color-brand-700: #1a4bc4;
+  --color-brand-900: #0f2a6b;
+  --color-navy-600: #2a4a85;
+  --color-navy-700: #1b3768;
+  --color-navy-800: #132a52;
+  --color-navy-900: #0b1b38;
+  --color-cream: #f5f7fb;
+  --color-ink: #0f172a;
+  --color-muted: #64748b;
+  --color-line: #e3e8f0;
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+}
+
+html, body, #root { height: 100%; }
+body {
+  @apply bg-cream text-ink antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: none;
+  font-feature-settings: "cv11", "ss01";
+}
+
+.pt-safe { padding-top: env(safe-area-inset-top); }
+.pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+
+@utility card { @apply rounded-2xl bg-white shadow-[0_1px_3px_rgba(15,23,42,0.05),0_1px_2px_rgba(15,23,42,0.03)] ring-1 ring-line; }
+@utility btn { @apply inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 font-semibold transition active:scale-[0.98] disabled:opacity-50 disabled:active:scale-100; }
+@utility btn-primary { @apply btn bg-brand-600 text-white shadow-sm shadow-brand-600/25 hover:bg-brand-700; }
+@utility btn-ghost { @apply btn bg-white text-ink ring-1 ring-line hover:bg-brand-50; }
+@utility btn-danger { @apply btn bg-red-50 text-red-700 ring-1 ring-red-200 hover:bg-red-100; }
+@utility input { @apply w-full rounded-xl border border-line bg-white px-4 py-3 text-base outline-none placeholder:text-muted/60 focus:border-brand-500 focus:ring-4 focus:ring-brand-100; }
+@utility label { @apply mb-1.5 block text-sm font-medium text-muted; }

@@ -1,0 +1,21 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: moim-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-moim}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-moim}
+      POSTGRES_DB: ${POSTGRES_DB:-moim}
+    ports:
+      - "${POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - moim-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-moim}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  moim-pgdata:
