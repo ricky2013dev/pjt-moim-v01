@@ -19,5 +19,10 @@
 - `npm run build` builds the PWA; `npm start` serves the API and built frontend
   together, using `PORT` (default 3001). Production needs
   `NODE_ENV=production` for secure cookies.
-- The imported server initializes its schema on startup. Before publishing,
-  review that behavior against Replit's publish-managed schema workflow.
+- Before the first development start, run `npm run db:setup` to initialize
+  the database tables. Startup validates the schema and seeds initial settings
+  and the admin only; it does not change the schema.
+- Set `MESSAGE_ENCRYPTION_KEY` in Secrets to a securely generated 32-byte key
+  (64 hexadecimal characters). Back it up securely: losing or changing the key
+  makes existing encrypted messages unreadable.
+- Verify changes with `npm test` and `npm run build`.
