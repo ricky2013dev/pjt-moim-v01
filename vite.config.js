@@ -7,8 +7,10 @@ export default defineConfig({
   root: 'client',
   build: { outDir: '../dist', emptyOutDir: true },
   server: {
-    port: 5180,
+    port: 5000,
+    strictPort: true,
     host: true,
+    allowedHosts: true,
     proxy: { '/api': 'http://localhost:3001' },
   },
   plugins: [

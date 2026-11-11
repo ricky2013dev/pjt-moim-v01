@@ -31,14 +31,16 @@ export async function migrate() {
   await query(sql);
 
   if (!(await getSetting('default_passcode_hash'))) {
-    const pin = process.env.DEFAULT_PASSCODE || '1234';
+    const pin = process.env.DEFAULT_PASSCODE;
+    if (!/^\d{4}$/.test(pin || '')) throw new Error('Set DEFAULT_PASSCODE to four digits in Secrets.');
     await setSetting('default_passcode_hash', await bcrypt.hash(pin, 10));
   }
 
   const { rowCount } = await query(`SELECT 1 FROM members WHERE role = 'admin' LIMIT 1`);
   if (!rowCount) {
     const name = process.env.ADMIN_NAME || 'Admin';
-    const pin = process.env.ADMIN_PASSCODE || '0000';
+    const pin = process.env.ADMIN_PASSCODE;
+    if (!/^\d{4}$/.test(pin || '')) throw new Error('Set ADMIN_PASSCODE to four digits in Secrets.');
     await query(
       `INSERT INTO members (name, relationship, role, passcode_hash) VALUES ($1, 'Admin', 'admin', $2)`,
       [name, await bcrypt.hash(pin, 10)],

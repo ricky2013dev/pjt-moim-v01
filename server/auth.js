@@ -1,7 +1,7 @@
 import jwt from 'jsonwebtoken';
 import { query } from './db.js';
 
-const SECRET = process.env.JWT_SECRET;
+const SECRET = process.env.JWT_SECRET || process.env.SESSION_SECRET;
 if (!SECRET || SECRET === 'change-me') {
   if (process.env.NODE_ENV === 'production') throw new Error('Set a strong JWT_SECRET.');
   console.warn('WARNING: JWT_SECRET is not set to a strong value.');
