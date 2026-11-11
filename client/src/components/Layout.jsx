@@ -61,8 +61,8 @@ export default function Layout() {
       <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
         <div className="pointer-events-auto mx-auto flex max-w-md gap-1 rounded-2xl bg-white/95 p-1.5 shadow-[0_10px_30px_-8px_rgba(31,94,234,0.35)] ring-1 ring-brand-100 backdrop-blur">
           <Tab to="/" end icon="home" label="News" badge={badges.announcements} />
-          <Tab to="/family" icon="users" label="Family" />
           <Tab to="/messages" icon="chat" label="Messages" badge={badges.messages} badgeClass="bg-emerald-500" />
+          <Tab to="/family" icon="users" label="Family" />
           <Tab to="/me" icon="user" label="Me" />
           {me?.role === 'admin' && <Tab to="/admin" icon="shield" label="Admin" />}
         </div>
@@ -92,7 +92,30 @@ function Clock() {
   );
 }
 
-export function PageHeader({ title, subtitle, action, back, showDate }) {
+const SLOGAN = '모임 MOIM Communication';
+
+// Scrolling slogan beside the page title. The text is repeated so the loop never shows a gap.
+function Slogan() {
+  const item = (hidden) => (
+    <span aria-hidden={hidden || undefined} className="flex shrink-0 items-center gap-3 pr-3">
+      {[0, 1].map((i) => (
+        <span key={i} className="flex items-center gap-3">
+          <span className="whitespace-nowrap">{SLOGAN}</span>
+          <span className="size-1 rounded-full bg-white/60" />
+        </span>
+      ))}
+    </span>
+  );
+  return (
+    <div className="marquee-mask ml-auto min-w-24 flex-1 overflow-hidden rounded-full bg-white/10 py-1.5 ring-1 ring-white/20 sm:max-w-xs">
+      <div className="marquee-track flex w-max text-[13px] font-semibold tracking-wide text-white/90">
+        {item(false)}{item(true)}
+      </div>
+    </div>
+  );
+}
+
+export function PageHeader({ title, subtitle, action, back, showDate = true }) {
   const navigate = useNavigate();
   return (
     <header className="pt-safe sticky top-0 z-30 mb-5 overflow-hidden rounded-b-[28px] bg-gradient-to-br from-brand-600 via-brand-500 to-sky-400 text-white shadow-[0_8px_24px_-8px_rgba(31,94,234,0.5)]">
@@ -113,8 +136,13 @@ export function PageHeader({ title, subtitle, action, back, showDate }) {
               {showDate && <Clock />}
             </div>
           )}
-          <h1 className="truncate text-[22px] font-bold leading-tight tracking-tight">{title}</h1>
-          {subtitle && <p className="mt-0.5 truncate text-[13px] text-white/85">{subtitle}</p>}
+          <div className="flex items-end gap-4">
+            <div className="min-w-0 shrink">
+              <h1 className="truncate text-[22px] font-bold leading-tight tracking-tight">{title}</h1>
+              {subtitle && <p className="mt-0.5 truncate text-[13px] text-white/85">{subtitle}</p>}
+            </div>
+            {!back && <Slogan />}
+          </div>
         </div>
         {action}
       </div>

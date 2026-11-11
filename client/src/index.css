@@ -37,3 +37,9 @@ body {
 @utility btn-danger { @apply btn bg-red-50 text-red-700 ring-1 ring-red-200 hover:bg-red-100; }
 @utility input { @apply w-full rounded-xl border border-line bg-white px-4 py-3 text-base outline-none placeholder:text-muted/60 focus:border-brand-500 focus:ring-4 focus:ring-brand-100; }
 @utility label { @apply mb-1.5 block text-sm font-medium text-muted; }
+
+/* Header slogan: two copies of the text slide left in a seamless loop. */
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.marquee-track { animation: marquee 14s linear infinite; }
+.marquee-mask { mask-image: linear-gradient(to right, transparent, #000 12%, #000 88%, transparent); }
+@media (prefers-reduced-motion: reduce) { .marquee-track { animation: none; } }

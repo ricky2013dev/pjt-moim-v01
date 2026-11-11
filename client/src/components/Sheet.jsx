@@ -5,7 +5,7 @@ import Icon from './Icon.jsx';
 // restoring the previous style) keeps stacked sheets, e.g. an editor plus its delete
 // confirmation, from leaving the page stuck unscrollable after they close.
 let openSheets = 0;
-function lockScroll() {
+export function lockScroll() {
   openSheets += 1;
   document.documentElement.style.overflow = 'hidden';
   return () => {

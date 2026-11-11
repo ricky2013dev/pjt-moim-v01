@@ -35,7 +35,7 @@ export default function News() {
 
   return (
     <>
-      <PageHeader title="Family News" subtitle={`Welcome back, ${me.name}`} showDate />
+      <PageHeader title="Family News" subtitle={`Welcome back, ${me.name}`} />
       <div className="space-y-3 px-4">
         <NotificationPrompt />
         <ErrorText>{error}</ErrorText>

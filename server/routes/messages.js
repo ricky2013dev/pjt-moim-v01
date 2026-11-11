@@ -47,9 +47,12 @@ const toMessage = (row, me) => ({
 });
 
 // Family group chat: everyone sees every message. `after` fetches only newer ones.
+// With `from` (the oldest id the client holds), the reply also lists which ids from
+// `from` onward still exist, so clients can drop messages deleted since they loaded.
 r.get('/chat', async (req, res) => {
   const me = req.member.id;
   const after = Number(req.query.after) || 0;
+  const from = Number(req.query.from) || 0;
   const { rows } = await query(
     `SELECT c.id, c.sender_id, c.body, c.created_at,
             m.name, m.photo_version, (m.photo IS NOT NULL) AS has_photo
@@ -65,7 +68,25 @@ r.get('/chat', async (req, res) => {
       [me, rows[0].id],
     );
   }
-  res.json(rows.reverse().map((row) => toMessage(row, me)));
+  const messages = rows.reverse().map((row) => toMessage(row, me));
+  if (!from) return res.json(messages);
+  const { rows: live } = await query(
+    'SELECT id FROM chat_messages WHERE id >= $1 AND id <= $2 ORDER BY id',
+    [from, after],
+  );
+  res.json({ messages, ids: live.map((l) => l.id) });
+});
+
+// A message can be deleted by whoever sent it, or by an admin.
+r.delete('/chat/:id', async (req, res) => {
+  const id = Number(req.params.id);
+  const { rows } = await query('SELECT sender_id FROM chat_messages WHERE id = $1', [id]);
+  if (!rows.length) return res.status(404).json({ error: 'Message not found.' });
+  if (rows[0].sender_id !== req.member.id && req.member.role !== 'admin') {
+    return res.status(403).json({ error: 'You can only delete your own messages.' });
+  }
+  await query('DELETE FROM chat_messages WHERE id = $1', [id]);
+  res.json({ ok: true });
 });
 
 r.post('/chat', async (req, res) => {
