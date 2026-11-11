@@ -3,7 +3,7 @@ import cookieParser from 'cookie-parser';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { seedInitialData } from './db.js';
+import { seedInitialData, validateApplicationSchema } from './db.js';
 import { initPush } from './push.js';
 import authRoutes from './routes/auth.js';
 import memberRoutes from './routes/members.js';
@@ -40,6 +40,7 @@ app.use((err, _req, res, _next) => {
   res.status(status).json({ error: status >= 500 ? 'Something went wrong.' : err.message });
 });
 
+await validateApplicationSchema();
 await seedInitialData();
 await initPush();
 const port = Number(process.env.PORT) || 3001;

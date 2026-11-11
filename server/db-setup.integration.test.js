@@ -27,16 +27,43 @@ async function reservePort() {
   return port;
 }
 
-function waitForStartup(child) {
+async function schemaSnapshot(client, schema) {
+  const { rows } = await client.query(
+    `SELECT object_type, object_name, detail
+     FROM (
+       SELECT 'relation'::TEXT AS object_type, c.relname AS object_name, c.relkind::TEXT AS detail
+       FROM pg_class c
+       JOIN pg_namespace n ON n.oid = c.relnamespace
+       WHERE n.nspname = $1 AND c.relkind IN ('r', 'p', 'i', 'S', 'v', 'm', 'f')
+       UNION ALL
+       SELECT 'column', table_name, concat_ws('|', column_name, data_type, is_nullable, column_default)
+       FROM information_schema.columns
+       WHERE table_schema = $1
+       UNION ALL
+       SELECT 'index', c.relname, pg_get_indexdef(i.indexrelid)
+       FROM pg_index i
+       JOIN pg_class c ON c.oid = i.indrelid
+       JOIN pg_namespace n ON n.oid = c.relnamespace
+       WHERE n.nspname = $1
+       UNION ALL
+       SELECT 'constraint', c.relname, con.conname || '|' || pg_get_constraintdef(con.oid)
+       FROM pg_constraint con
+       JOIN pg_class c ON c.oid = con.conrelid
+       JOIN pg_namespace n ON n.oid = c.relnamespace
+       WHERE n.nspname = $1
+     ) schema_objects
+     ORDER BY object_type, object_name, detail`,
+    [schema],
+  );
+  return rows;
+}
+
+function waitForExit(child) {
   return new Promise((resolve, reject) => {
     let output = '';
-    const timeout = setTimeout(() => reject(new Error(`Server did not start: ${output}`)), 15_000);
+    const timeout = setTimeout(() => reject(new Error(`Server did not exit: ${output}`)), 15_000);
     child.stdout.on('data', (chunk) => {
       output += chunk.toString();
-      if (output.includes('API listening on')) {
-        clearTimeout(timeout);
-        resolve();
-      }
     });
     child.stderr.on('data', (chunk) => {
       output += chunk.toString();
@@ -45,9 +72,9 @@ function waitForStartup(child) {
       clearTimeout(timeout);
       reject(error);
     });
-    child.once('exit', (code) => {
+    child.once('close', (code) => {
       clearTimeout(timeout);
-      reject(new Error(`Server exited before starting (code ${code}): ${output}`));
+      resolve({ code, output });
     });
   });
 }
@@ -168,6 +195,15 @@ test('fresh development setup and production-style startup do not run startup DD
     await productionStyleSetup.end();
   }
 
+  const beforeStartup = new Client({ connectionString: productionStyleUrl });
+  let productionStyleSchemaBefore;
+  try {
+    await beforeStartup.connect();
+    productionStyleSchemaBefore = await schemaSnapshot(beforeStartup, productionStyleSchema);
+  } finally {
+    await beforeStartup.end();
+  }
+
   const port = await reservePort();
   server = spawn(process.execPath, ['server/index.js'], {
     env: {
@@ -183,7 +219,14 @@ test('fresh development setup and production-style startup do not run startup DD
     },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
-  await waitForStartup(server);
+  const startupResult = await waitForExit(server);
+  assert.notEqual(startupResult.code, 0, 'startup should fail when required tables are missing');
+  assert.match(startupResult.output, /Database schema is incomplete/);
+  assert.match(
+    startupResult.output,
+    /Missing required tables: announcements, announcement_targets, announcement_reads, messages, push_tokens/,
+  );
+  assert.doesNotMatch(startupResult.output, /API listening on/);
 
   const verify = new Client({ connectionString: productionStyleUrl });
   try {
@@ -194,10 +237,13 @@ test('fresh development setup and production-style startup do not run startup DD
     );
     assert.deepEqual(productionStyleTables.map(({ tablename }) => tablename), ['members', 'settings']);
 
+    const productionStyleSchemaAfter = await schemaSnapshot(verify, productionStyleSchema);
+    assert.deepEqual(productionStyleSchemaAfter, productionStyleSchemaBefore);
+
     const { rows: productionStyleAdmins } = await verify.query(
       `SELECT name, role FROM members WHERE role = 'admin'`,
     );
-    assert.deepEqual(productionStyleAdmins, [{ name: 'Production Startup Test Admin', role: 'admin' }]);
+    assert.deepEqual(productionStyleAdmins, [], 'failed startup should not seed an admin');
   } finally {
     await verify.end();
   }

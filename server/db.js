@@ -12,6 +12,34 @@ export const pool = new pg.Pool({
 
 export const query = (text, params) => pool.query(text, params);
 
+const REQUIRED_APPLICATION_TABLES = [
+  'members',
+  'settings',
+  'announcements',
+  'announcement_targets',
+  'announcement_reads',
+  'messages',
+  'push_tokens',
+];
+
+export async function validateApplicationSchema() {
+  const { rows } = await query(`
+    SELECT table_name
+    FROM information_schema.tables
+    WHERE table_schema = ANY(current_schemas(false))
+      AND table_type = 'BASE TABLE'
+  `);
+  const availableTables = new Set(rows.map(({ table_name }) => table_name));
+  const missingTables = REQUIRED_APPLICATION_TABLES.filter((table) => !availableTables.has(table));
+
+  if (missingTables.length) {
+    throw new Error(
+      `Database schema is incomplete. Missing required tables: ${missingTables.join(', ')}. `
+      + 'Initialize the database schema before starting the application.',
+    );
+  }
+}
+
 export async function getSetting(key) {
   const { rows } = await query('SELECT value FROM settings WHERE key = $1', [key]);
   return rows[0]?.value ?? null;
