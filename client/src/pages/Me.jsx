@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { api, uploadPhoto } from '../lib/api.js';
+import { api, uploadPhoto, formatPhone } from '../lib/api.js';
 import { useAuth } from '../lib/auth.jsx';
 import { disablePush, enablePush, isIos, isStandalone, pushAvailable, savedToken } from '../lib/push.js';
 import { PageHeader, ErrorText } from '../components/Layout.jsx';
@@ -97,7 +97,7 @@ export default function Me() {
 
         <form onSubmit={save} className="card space-y-4 p-4">
           <div><label className="label">Name</label><input className="input" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
-          <div><label className="label">Phone</label><input className="input" type="tel" inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="010-0000-0000" /></div>
+          <div><label className="label">Phone</label><input className="input" type="tel" inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: formatPhone(e.target.value) })} placeholder="214-555-1234" /></div>
           <div><label className="label">Email</label><input className="input" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="you@example.com" /></div>
           <div><label className="label">Address</label><input className="input" autoComplete="street-address" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Street, city" /></div>
           <div><label className="label">Note</label><textarea className="input min-h-20" rows={3} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} /></div>

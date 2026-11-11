@@ -57,3 +57,14 @@ export function timeAgo(iso) {
 
 // Opens the address in the phone's map app (or Google Maps in a browser).
 export const mapUrl = (address) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+
+// Formats as you type: 214-531-1234 (US), 010-1234-5678 (numbers starting with 0).
+// Numbers starting with "+" or lists with commas are left as typed.
+export function formatPhone(v) {
+  if (/^\s*\+|[,;]/.test(v)) return v;
+  const d = v.replace(/\D/g, '');
+  const [a, b] = d.startsWith('0') ? [3, d.length > 10 ? 4 : 3] : [3, 3];
+  if (d.length <= a) return d;
+  if (d.length <= a + b) return `${d.slice(0, a)}-${d.slice(a)}`;
+  return `${d.slice(0, a)}-${d.slice(a, a + b)}-${d.slice(a + b, a + b + 4)}`;
+}

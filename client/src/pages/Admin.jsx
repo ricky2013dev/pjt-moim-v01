@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api, timeAgo, uploadPhoto } from '../lib/api.js';
+import { api, timeAgo, uploadPhoto, formatPhone } from '../lib/api.js';
 import { useAuth } from '../lib/auth.jsx';
 import { PageHeader, Empty, ErrorText } from '../components/Layout.jsx';
 import Avatar from '../components/Avatar.jsx';
@@ -131,7 +131,7 @@ function MemberEditor({ target, onClose, reload }) {
           )}
           <form id="member-form" onSubmit={save} className="space-y-4">
             <div><label className="label">Name *</label><input className="input" required value={form.name} onChange={set('name')} placeholder="e.g. Grandma Kim" autoFocus={isNew} /></div>
-            <div><label className="label">Phone</label><input className="input" type="tel" inputMode="tel" value={form.phone} onChange={set('phone')} /></div>
+            <div><label className="label">Phone</label><input className="input" type="tel" inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: formatPhone(e.target.value) })} placeholder="214-555-1234" /></div>
             <div><label className="label">Email</label><input className="input" type="email" value={form.email} onChange={set('email')} /></div>
             <div><label className="label">Address</label><input className="input" value={form.address} onChange={set('address')} placeholder="Street, city" /></div>
             <div><label className="label">Note</label><textarea className="input min-h-20" rows={3} value={form.note} onChange={set('note')} /></div>
@@ -352,8 +352,8 @@ function AnnouncementEditor({ target, members, onClose, onSaved }) {
               <div>
                 <label className="label">Add phone numbers</label>
                 <div className="flex gap-2">
-                  <input className="input" type="tel" inputMode="tel" value={manual} placeholder="010-0000-0000"
-                    onChange={(e) => setManual(e.target.value)}
+                  <input className="input" type="tel" inputMode="tel" value={manual} placeholder="214-555-1234"
+                    onChange={(e) => setManual(formatPhone(e.target.value))}
                     onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addManual(); } }} />
                   <button type="button" className="btn-ghost shrink-0" onClick={addManual} disabled={!manual.trim()}>Add</button>
                 </div>
@@ -361,7 +361,7 @@ function AnnouncementEditor({ target, members, onClose, onSaved }) {
                   <div className="mt-2 flex flex-wrap gap-2">
                     {extra.map((n) => (
                       <span key={n} className="flex items-center gap-1 rounded-full bg-sky-50 py-1 pr-1 pl-3 text-sm font-medium text-sky-800">
-                        {n}
+                        {formatPhone(n)}
                         <button type="button" className="rounded-full p-1 hover:bg-sky-100" aria-label={`Remove ${n}`}
                           onClick={() => setExtra((e) => e.filter((x) => x !== n))}><Icon name="x" className="size-3.5" /></button>
                       </span>
