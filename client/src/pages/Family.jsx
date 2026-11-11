@@ -41,6 +41,11 @@ export default function Family() {
                     <Icon name="phone" className="size-5" />
                   </a>
                 )}
+                {m.phone && m.id !== me.id && (
+                  <a href={`sms:${m.phone.replace(/(?!^\+)[^\d]/g, '')}`} onClick={(e) => e.stopPropagation()} className="rounded-full bg-sky-50 p-2.5 text-sky-700" aria-label={`Text ${m.name}`}>
+                    <Icon name="sms" className="size-5" />
+                  </a>
+                )}
                 <Icon name="chevron" className="size-5 text-muted/60" />
               </Link>
             </li>
