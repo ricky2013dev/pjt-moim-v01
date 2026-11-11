@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { api, setUnauthorizedHandler } from './api.js';
 import { refreshPush, savedToken } from './push.js';
+import { checkForUpdate } from './update.js';
 
 const AuthCtx = createContext(null);
 
@@ -29,6 +30,7 @@ export function AuthProvider({ children }) {
     setNotice('');
     setJustLoggedIn(true);
     setMe(m);
+    checkForUpdate({ force: true }); // pick up the newest app build on every sign-in
     return m;
   }, []);
 

@@ -41,6 +41,10 @@ export default defineConfig({
       workbox: {
         // Push + notification-click handlers live in this file.
         importScripts: ['push-sw.js'],
+        // A new build takes over open app windows immediately (the page then reloads onto it).
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         navigateFallbackDenylist: [/^\/api\//],
         globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
       },
