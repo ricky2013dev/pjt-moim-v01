@@ -1,5 +1,4 @@
 import pg from 'pg';
-import { readFile } from 'node:fs/promises';
 import bcrypt from 'bcryptjs';
 
 if (!process.env.DATABASE_URL) {
@@ -26,10 +25,7 @@ export async function setSetting(key, value) {
   );
 }
 
-export async function migrate() {
-  const sql = await readFile(new URL('./schema.sql', import.meta.url), 'utf8');
-  await query(sql);
-
+export async function seedInitialData() {
   if (!(await getSetting('default_passcode_hash'))) {
     const pin = process.env.DEFAULT_PASSCODE;
     if (!/^\d{4}$/.test(pin || '')) throw new Error('Set DEFAULT_PASSCODE to four digits in Secrets.');

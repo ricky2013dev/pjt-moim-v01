@@ -10,6 +10,7 @@
     "dev": "concurrently -n api,web -c blue,green \"npm:dev:api\" \"npm:dev:web\"",
     "dev:api": "node --watch --env-file-if-exists=.env server/index.js",
     "dev:web": "vite",
+    "db:setup": "node --env-file-if-exists=.env server/setup-db.js",
     "test": "node --test",
     "build": "vite build",
     "start": "node --env-file-if-exists=.env server/index.js"

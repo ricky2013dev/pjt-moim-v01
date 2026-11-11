@@ -8,10 +8,11 @@ React + Tailwind installable web app for the family: contacts, announcements, pr
 cp .env.example .env        # then set JWT_SECRET (and Firebase keys if you want push)
 npm install
 npm run db:up               # Postgres 16 in Docker on port 5433
+npm run db:setup            # create the development tables once
 npm run dev                 # API on :3001, web on http://localhost:5180
 ```
 
-On first start the server creates the tables and an admin named `ADMIN_NAME` with passcode `ADMIN_PASSCODE`.
+The explicit database setup command creates tables in the development database. Server startup does not change the schema; it only creates the initial default passcode setting and admin when they are missing. Publishing uses Replit's managed schema changes to apply development schema changes to production.
 New members sign in with `DEFAULT_PASSCODE` until the admin changes it under **Admin → Passcodes**.
 
 Production-style run: `npm run build && npm start` → everything served from http://localhost:3001.

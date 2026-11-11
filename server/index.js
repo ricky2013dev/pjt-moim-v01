@@ -3,7 +3,7 @@ import cookieParser from 'cookie-parser';
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { migrate } from './db.js';
+import { seedInitialData } from './db.js';
 import { initPush } from './push.js';
 import authRoutes from './routes/auth.js';
 import memberRoutes from './routes/members.js';
@@ -40,7 +40,7 @@ app.use((err, _req, res, _next) => {
   res.status(status).json({ error: status >= 500 ? 'Something went wrong.' : err.message });
 });
 
-await migrate();
+await seedInitialData();
 await initPush();
 const port = Number(process.env.PORT) || 3001;
 app.listen(port, '0.0.0.0', () => console.log(`API listening on http://localhost:${port}`));
