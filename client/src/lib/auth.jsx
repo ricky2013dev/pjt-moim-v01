@@ -7,6 +7,8 @@ const AuthCtx = createContext(null);
 export function AuthProvider({ children }) {
   const [me, setMe] = useState(undefined); // undefined = loading, null = signed out
   const [notice, setNotice] = useState('');
+  // True right after an explicit sign-in, so the app can pick the landing tab.
+  const [justLoggedIn, setJustLoggedIn] = useState(false);
 
   useEffect(() => {
     setUnauthorizedHandler((msg) => {
@@ -25,6 +27,7 @@ export function AuthProvider({ children }) {
   const login = useCallback(async (memberId, passcode) => {
     const m = await api('/auth/login', { method: 'POST', body: { memberId, passcode } });
     setNotice('');
+    setJustLoggedIn(true);
     setMe(m);
     return m;
   }, []);
@@ -36,7 +39,7 @@ export function AuthProvider({ children }) {
   }, []);
 
   return (
-    <AuthCtx.Provider value={{ me, setMe, login, logout, notice }}>{children}</AuthCtx.Provider>
+    <AuthCtx.Provider value={{ me, setMe, login, logout, notice, justLoggedIn }}>{children}</AuthCtx.Provider>
   );
 }
 

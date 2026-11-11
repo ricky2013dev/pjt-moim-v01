@@ -1,5 +1,6 @@
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { api } from '../lib/api.js';
 import Icon from './Icon.jsx';
 import { useAuth } from '../lib/auth.jsx';
 import { useBadges } from '../lib/badges.jsx';
@@ -22,10 +23,24 @@ function Tab({ to, icon, label, badge, badgeClass = 'bg-rose-500', end }) {
 }
 
 export default function Layout() {
-  const { me } = useAuth();
+  const { me, justLoggedIn } = useAuth();
   const { badges, refresh } = useBadges();
   const navigate = useNavigate();
   const location = useLocation();
+
+  // Pick the landing tab once per session: News by default, or whichever tab has
+  // something new (News wins if both do). Runs after a sign-in, or when the app opens
+  // on the home screen — deep links such as notification taps are left alone.
+  const landed = useRef(false);
+  useEffect(() => {
+    if (landed.current) return;
+    landed.current = true;
+    if (!justLoggedIn && location.pathname !== '/') return;
+    api('/badges')
+      .then((b) => (b.announcements > 0 || !b.messages ? '/' : '/messages'))
+      .catch(() => '/')
+      .then((to) => { if (to !== location.pathname) navigate(to, { replace: true }); });
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Every navigation (including tapping the current tab again) re-checks unread counts.
   useEffect(() => { refresh(); }, [location.key, refresh]);
