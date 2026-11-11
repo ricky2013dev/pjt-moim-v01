@@ -3,6 +3,8 @@
 - Keep the imported React/Vite + Express + PostgreSQL structure.
 - Use Node.js 24; the installed Firebase packages require Node >=24.12.
 - Install dependencies with `npm install`.
+- After task merges, `scripts/post-merge.sh` restores locked dependencies with
+  `npm ci` and builds the PWA. Replit then reconciles the running workflows.
 - The development workflow runs `npm run dev`: Vite serves the preview on
   `0.0.0.0:5000` and proxies `/api` to Express on port 3001.
 - Use the provided `DATABASE_URL`. Docker is not needed on Replit.
