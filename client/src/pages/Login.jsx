@@ -45,7 +45,7 @@ export default function Login() {
           <img src="/icon.svg" alt="" className="size-10" />
         </div>
         <h1 className="text-3xl font-bold tracking-tight">Moim</h1>
-        <p className="mt-1 text-blue-100">Our family, together</p>
+        <p className="mt-1 text-blue-100">Our family, together V12.01.01</p>
       </div>
     </div>
     <div className="pb-safe relative -mt-12 mx-auto flex w-full max-w-md flex-1 flex-col rounded-t-3xl bg-cream px-6 pt-6">

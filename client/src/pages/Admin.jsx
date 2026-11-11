@@ -206,6 +206,17 @@ function NewsTab({ members }) {
   );
 }
 
+// Keep digits and a leading "+" so the Messages app recognizes the number.
+const cleanPhone = (p) => String(p || '').trim().replace(/(?!^\+)[^\d]/g, '');
+
+// Opens the phone's Messages app with every recipient and the text pre-filled.
+// iOS needs the "/open?addresses=" form for more than one recipient.
+function smsUrl(numbers, text) {
+  const body = encodeURIComponent(text);
+  if (/iphone|ipad|ipod|macintosh/i.test(navigator.userAgent)) return `sms:/open?addresses=${numbers.join(',')}&body=${body}`;
+  return `sms:${numbers.join(',')}?body=${body}`;
+}
+
 function AnnouncementEditor({ target, members, onClose, onSaved }) {
   const { me } = useAuth();
   const isNew = target === 'new';
@@ -216,24 +227,68 @@ function AnnouncementEditor({ target, members, onClose, onSaved }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const others = members.filter((m) => m.id !== me.id);
+  const withPhone = others.filter((m) => cleanPhone(m.phone));
+
+  const [sendSms, setSendSms] = useState(false);
+  const [smsIds, setSmsIds] = useState(() => new Set(withPhone.map((m) => m.id)));
+  const [extra, setExtra] = useState([]); // manually entered numbers
+  const [manual, setManual] = useState('');
+  const [smsLink, setSmsLink] = useState(null); // set after posting, when SMS is on
 
   const toggle = (id) => setIds((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  const toggleSms = (id) => setSmsIds((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n; });
+
+  const addManual = () => {
+    const nums = manual.split(/[,;\n]/).map(cleanPhone).filter((n) => n.replace('+', '').length >= 3);
+    if (!nums.length) return;
+    setExtra((e) => [...new Set([...e, ...nums])]);
+    setManual('');
+  };
+
+  const smsNumbers = () => [...new Set([
+    ...withPhone.filter((m) => smsIds.has(m.id)).map((m) => cleanPhone(m.phone)),
+    ...extra,
+    ...(manual.trim() ? manual.split(/[,;\n]/).map(cleanPhone).filter(Boolean) : []),
+  ])];
 
   const save = async (e) => {
     e.preventDefault();
+    const numbers = sendSms ? smsNumbers() : [];
+    if (sendSms && !numbers.length) { setError('Pick or enter at least one phone number for the text message.'); return; }
     setBusy(true); setError('');
     try {
       const payload = { title, body, audience, targetIds: [...ids] };
       if (isNew) await api('/announcements', { method: 'POST', body: payload });
       else await api(`/announcements/${target.id}`, { method: 'PUT', body: payload });
-      onSaved();
+      if (numbers.length) setSmsLink({ url: smsUrl(numbers, `📢 ${title.trim()}${body.trim() ? `\n\n${body.trim()}` : ''}`), count: numbers.length });
+      else onSaved();
     } catch (err) { setError(err.message); }
     finally { setBusy(false); }
   };
 
+  if (smsLink) {
+    return (
+      <Sheet open onClose={onSaved} title="Send the text message"
+        footer={
+          <div className="space-y-2">
+            <a href={smsLink.url} className="btn-primary w-full"><Icon name="sms" className="size-5" />Open Messages</a>
+            <button type="button" className="btn-ghost w-full" onClick={onSaved}>Done</button>
+          </div>
+        }>
+        <div className="space-y-3 pb-2">
+          <p className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800">Announcement posted and app notifications sent.</p>
+          <p className="text-sm text-muted">
+            Tap <b>Open Messages</b>. It opens with {smsLink.count} recipient{smsLink.count === 1 ? '' : 's'} and the text filled in. Check it, then tap send.
+            The text goes from your own phone number.
+          </p>
+        </div>
+      </Sheet>
+    );
+  }
+
   return (
     <Sheet open onClose={onClose} title={isNew ? 'New announcement' : 'Edit announcement'}
-      footer={<button form="ann-form" className="btn-primary w-full" disabled={busy}>{busy ? 'Sending…' : isNew ? 'Post & notify' : 'Update & notify'}</button>}>
+      footer={<button form="ann-form" className="btn-primary w-full" disabled={busy}>{busy ? 'Sending…' : `${isNew ? 'Post' : 'Update'} & notify${sendSms ? ' + SMS' : ''}`}</button>}>
       <form id="ann-form" onSubmit={save} className="space-y-4 pb-2">
         <div><label className="label">Title *</label><input className="input" required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Family dinner this Sunday" autoFocus /></div>
         <div><label className="label">Message</label><textarea className="input min-h-32" value={body} onChange={(e) => setBody(e.target.value)} placeholder="Details…" /></div>
@@ -259,6 +314,65 @@ function AnnouncementEditor({ target, members, onClose, onSaved }) {
             ))}
           </ul>
         )}
+
+        <div className="card p-3">
+          <label className="flex items-center gap-3">
+            <input type="checkbox" className="size-5 accent-brand-600" checked={sendSms} onChange={(e) => setSendSms(e.target.checked)} />
+            <Icon name="sms" className="size-5 text-sky-700" />
+            <span className="flex-1 font-semibold">Also send as text message (SMS)</span>
+          </label>
+          {sendSms && (
+            <div className="mt-3 space-y-3">
+              {withPhone.length > 0 ? (
+                <>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted">{withPhone.filter((m) => smsIds.has(m.id)).length} of {withPhone.length} with a phone number</span>
+                    <button type="button" className="font-semibold text-brand-600"
+                      onClick={() => setSmsIds(smsIds.size === withPhone.length ? new Set() : new Set(withPhone.map((m) => m.id)))}>
+                      {smsIds.size === withPhone.length ? 'Clear all' : 'Select all'}
+                    </button>
+                  </div>
+                  <ul className="divide-y divide-line rounded-xl bg-white ring-1 ring-line">
+                    {withPhone.map((m) => (
+                      <li key={m.id}>
+                        <label className="flex items-center gap-3 p-3">
+                          <input type="checkbox" className="size-5 accent-brand-600" checked={smsIds.has(m.id)} onChange={() => toggleSms(m.id)} />
+                          <Avatar member={m} size="size-9" className="text-sm" />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate font-medium">{m.name}</span>
+                            <span className="block truncate text-sm text-muted">{m.phone}</span>
+                          </span>
+                        </label>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              ) : <p className="text-sm text-muted">No family members have a phone number yet.</p>}
+
+              <div>
+                <label className="label">Add phone numbers</label>
+                <div className="flex gap-2">
+                  <input className="input" type="tel" inputMode="tel" value={manual} placeholder="010-0000-0000"
+                    onChange={(e) => setManual(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addManual(); } }} />
+                  <button type="button" className="btn-ghost shrink-0" onClick={addManual} disabled={!manual.trim()}>Add</button>
+                </div>
+                {extra.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {extra.map((n) => (
+                      <span key={n} className="flex items-center gap-1 rounded-full bg-sky-50 py-1 pr-1 pl-3 text-sm font-medium text-sky-800">
+                        {n}
+                        <button type="button" className="rounded-full p-1 hover:bg-sky-100" aria-label={`Remove ${n}`}
+                          onClick={() => setExtra((e) => e.filter((x) => x !== n))}><Icon name="x" className="size-3.5" /></button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-muted">After posting, your Messages app opens with these numbers and the announcement text filled in.</p>
+            </div>
+          )}
+        </div>
         <ErrorText>{error}</ErrorText>
       </form>
     </Sheet>
