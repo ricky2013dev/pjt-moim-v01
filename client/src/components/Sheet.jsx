@@ -1,18 +1,28 @@
 import { useEffect } from 'react';
 import Icon from './Icon.jsx';
 
+// Page scroll is locked while any sheet is open. A counter (rather than saving and
+// restoring the previous style) keeps stacked sheets, e.g. an editor plus its delete
+// confirmation, from leaving the page stuck unscrollable after they close.
+let openSheets = 0;
+function lockScroll() {
+  openSheets += 1;
+  document.documentElement.style.overflow = 'hidden';
+  return () => {
+    openSheets = Math.max(0, openSheets - 1);
+    if (!openSheets) document.documentElement.style.overflow = '';
+  };
+}
+
 // Bottom sheet on phones, centered dialog on larger screens.
 export default function Sheet({ open, onClose, title, children, footer }) {
+  useEffect(() => (open ? lockScroll() : undefined), [open]);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e) => e.key === 'Escape' && onClose?.();
     document.addEventListener('keydown', onKey);
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = prev;
-    };
+    return () => document.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
   if (!open) return null;

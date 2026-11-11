@@ -1,4 +1,19 @@
 /* Imported into the Workbox service worker. Handles FCM web-push data messages. */
+
+// Updates the number on the home-screen icon (iOS 16.4+ installed app, Android
+// Chrome) even while the app is closed. The session cookie goes along, so the
+// server returns this person's own unread counts.
+async function updateAppBadge() {
+  if (!('setAppBadge' in self.navigator)) return;
+  try {
+    const res = await fetch('/api/badges', { credentials: 'same-origin', cache: 'no-store' });
+    if (!res.ok) return;
+    const b = await res.json();
+    const total = (b.messages || 0) + (b.announcements || 0);
+    await (total ? self.navigator.setAppBadge(total) : self.navigator.clearAppBadge());
+  } catch { /* offline or signed out: leave the badge as it is */ }
+}
+
 self.addEventListener('push', (event) => {
   let payload = {};
   try { payload = event.data ? event.data.json() : {}; } catch { payload = {}; }
@@ -16,6 +31,7 @@ self.addEventListener('push', (event) => {
       renotify: true,
       data: { url },
     });
+    await updateAppBadge();
   })());
 });
 
