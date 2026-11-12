@@ -28,17 +28,17 @@ export default function Layout() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Pick the landing tab once per session: News by default, or whichever tab has
-  // something new (News wins if both do). Runs after a sign-in, or when the app opens
-  // on the home screen — deep links such as notification taps are left alone.
+  // Pick the landing tab once per session: Events by default, or whichever tab has
+  // something new (Events, then News, then Messages). Runs after a sign-in, or when the
+  // app opens on the home screen — deep links such as notification taps are left alone.
   const landed = useRef(false);
   useEffect(() => {
     if (landed.current) return;
     landed.current = true;
     if (!justLoggedIn && location.pathname !== '/') return;
     api('/badges')
-      .then((b) => (b.announcements > 0 || !b.messages ? '/' : '/messages'))
-      .catch(() => '/')
+      .then((b) => (b.events > 0 ? '/events' : b.announcements > 0 ? '/' : b.messages > 0 ? '/messages' : '/events'))
+      .catch(() => '/events')
       .then((to) => { if (to !== location.pathname) navigate(to, { replace: true }); });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
