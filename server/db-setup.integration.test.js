@@ -163,6 +163,8 @@ test('fresh development setup and production-style startup do not run startup DD
     'announcements',
     'chat_messages',
     'chat_reads',
+    'event_rsvps',
+    'events',
     'members',
     'push_tokens',
     'settings',
@@ -229,7 +231,7 @@ test('fresh development setup and production-style startup do not run startup DD
   assert.match(startupResult.output, /Database schema is incomplete/);
   assert.match(
     startupResult.output,
-    /Missing required tables: announcements, announcement_targets, announcement_reads, chat_messages, chat_reads, push_tokens/,
+    /Missing required tables: announcements, announcement_targets, announcement_reads, chat_messages, chat_reads, push_tokens, events, event_rsvps/,
   );
   assert.doesNotMatch(startupResult.output, /API listening on/);
 

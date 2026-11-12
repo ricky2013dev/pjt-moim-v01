@@ -39,6 +39,8 @@ const REQUIRED_APPLICATION_COLUMNS = {
   chat_messages: ['id', 'sender_id', 'body', 'created_at'],
   chat_reads: ['member_id', 'last_read_id'],
   push_tokens: ['token', 'member_id', 'created_at'],
+  events: ['id', 'title', 'description', 'location', 'starts_at', 'author_id', 'created_at', 'updated_at'],
+  event_rsvps: ['event_id', 'member_id', 'status', 'adults', 'kids', 'updated_at'],
 };
 
 export async function validateApplicationSchema() {

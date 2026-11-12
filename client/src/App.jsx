@@ -8,6 +8,7 @@ import Family from './pages/Family.jsx';
 import MemberDetail from './pages/MemberDetail.jsx';
 import Messages from './pages/Messages.jsx';
 import Me from './pages/Me.jsx';
+import Events from './pages/Events.jsx';
 import Admin from './pages/Admin.jsx';
 
 export default function App() {
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="messages" element={<Messages />} />
           {/* Old 1:1 thread links (e.g. past notifications) land in the group chat. */}
           <Route path="messages/:id" element={<Navigate to="/messages" replace />} />
+          <Route path="events" element={<Events />} />
           <Route path="me" element={<Me />} />
           {me.role === 'admin' && <Route path="admin" element={<Admin />} />}
           <Route path="*" element={<Navigate to="/" replace />} />

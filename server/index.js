@@ -10,6 +10,7 @@ import authRoutes from './routes/auth.js';
 import memberRoutes from './routes/members.js';
 import announcementRoutes from './routes/announcements.js';
 import messageRoutes from './routes/messages.js';
+import eventRoutes from './routes/events.js';
 
 const app = express();
 app.set('trust proxy', 1);
@@ -22,6 +23,7 @@ api.use((_req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
 api.use(authRoutes);
 api.use(announcementRoutes);
 api.use(messageRoutes);
+api.use(eventRoutes);
 api.use(memberRoutes);
 api.use((_req, res) => res.status(404).json({ error: 'Not found' }));
 app.use('/api', api);

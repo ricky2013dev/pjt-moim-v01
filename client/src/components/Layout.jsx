@@ -60,6 +60,7 @@ export default function Layout() {
       </main>
       <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3" style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}>
         <div className="pointer-events-auto mx-auto flex max-w-md gap-1 rounded-2xl bg-white/95 p-1.5 shadow-[0_10px_30px_-8px_rgba(31,94,234,0.35)] ring-1 ring-brand-100 backdrop-blur">
+          <Tab to="/events" icon="calendar" label="Events" badge={badges.events} badgeClass="bg-amber-500" />
           <Tab to="/" end icon="home" label="News" badge={badges.announcements} />
           <Tab to="/messages" icon="chat" label="Messages" badge={badges.messages} badgeClass="bg-emerald-500" />
           <Tab to="/family" icon="users" label="Family" />

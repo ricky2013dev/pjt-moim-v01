@@ -1,10 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { api } from './api.js';
 
-const Ctx = createContext({ badges: { messages: 0, announcements: 0 }, refresh: () => {} });
+const Ctx = createContext({ badges: { messages: 0, announcements: 0, events: 0 }, refresh: () => {} });
 
 export function BadgeProvider({ children }) {
-  const [badges, setBadges] = useState({ messages: 0, announcements: 0 });
+  const [badges, setBadges] = useState({ messages: 0, announcements: 0, events: 0 });
   const refresh = useCallback(() => api('/badges').then(setBadges).catch(() => {}), []);
 
   useEffect(() => {
@@ -22,7 +22,7 @@ export function BadgeProvider({ children }) {
   }, [refresh]);
 
   useEffect(() => {
-    const total = badges.messages + badges.announcements;
+    const total = badges.messages + badges.announcements + (badges.events || 0);
     if ('setAppBadge' in navigator) (total ? navigator.setAppBadge(total) : navigator.clearAppBadge()).catch?.(() => {});
   }, [badges]);
 

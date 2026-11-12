@@ -17,7 +17,12 @@ r.get('/badges', async (req, res) => {
        (SELECT count(*)::int FROM announcements a
           WHERE (a.audience = 'all' OR EXISTS (SELECT 1 FROM announcement_targets t WHERE t.announcement_id = a.id AND t.member_id = $1))
             AND NOT EXISTS (SELECT 1 FROM announcement_reads rd WHERE rd.announcement_id = a.id AND rd.member_id = $1)
-       ) AS announcements`,
+       ) AS announcements,
+       -- Upcoming events this member hasn't answered yet.
+       (SELECT count(*)::int FROM events e
+          WHERE (e.starts_at IS NULL OR e.starts_at > now())
+            AND NOT EXISTS (SELECT 1 FROM event_rsvps v WHERE v.event_id = e.id AND v.member_id = $1)
+       ) AS events`,
     [me],
   );
   res.json(rows[0]);
