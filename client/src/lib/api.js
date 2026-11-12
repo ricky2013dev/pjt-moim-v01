@@ -58,6 +58,14 @@ export function timeAgo(iso) {
 // Opens the address in the phone's map app (or Google Maps in a browser).
 export const mapUrl = (address) => `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
 
+// Keep digits and a leading "+" so phone and Messages apps recognize the number.
+export const cleanPhone = (p) => String(p || '').trim().replace(/(?!^\+)[^\d]/g, '');
+
+// A member's numbers that are filled in, in order.
+export const phonesOf = (m) => [['Phone', m?.phone], ['Phone 2', m?.phone2]]
+  .filter(([, p]) => cleanPhone(p))
+  .map(([label, phone]) => ({ label, phone }));
+
 // Formats as you type: 214-531-1234 (US), 010-1234-5678 (numbers starting with 0).
 // Numbers starting with "+" or lists with commas are left as typed.
 export function formatPhone(v) {

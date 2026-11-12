@@ -7,13 +7,14 @@ import { upload, savePhoto, removePhoto } from '../photos.js';
 const r = Router();
 r.use(requireAuth);
 
-const COLS = 'id, name, phone, email, address, note, comment, role, photo_version, (photo IS NOT NULL) AS has_photo';
+const COLS = 'id, name, phone, phone2, email, address, note, comment, role, photo_version, (photo IS NOT NULL) AS has_photo';
 
 export function publicMember(m) {
   return {
     id: m.id,
     name: m.name,
     phone: m.phone,
+    phone2: m.phone2,
     email: m.email,
     address: m.address,
     note: m.note,
@@ -25,7 +26,7 @@ export function publicMember(m) {
 
 function clean(body, { requireName } = {}) {
   const out = {};
-  for (const k of ['name', 'phone', 'email', 'address']) {
+  for (const k of ['name', 'phone', 'phone2', 'email', 'address']) {
     if (body[k] !== undefined) out[k] = String(body[k]).trim().slice(0, 200);
   }
   for (const k of ['note', 'comment']) {
@@ -129,9 +130,9 @@ r.post('/admin/members', requireAdmin, async (req, res) => {
   const role = req.body?.role === 'admin' ? 'admin' : 'member';
   const hash = await getSetting('default_passcode_hash');
   const { rows } = await query(
-    `INSERT INTO members (name, phone, email, address, note, comment, role, passcode_hash)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-    [fields.name, fields.phone || '', fields.email || '',
+    `INSERT INTO members (name, phone, phone2, email, address, note, comment, role, passcode_hash)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+    [fields.name, fields.phone || '', fields.phone2 || '', fields.email || '',
       fields.address || '', fields.note || '', fields.comment || '', role, hash],
   );
   res.status(201).json(await getMember(rows[0].id));

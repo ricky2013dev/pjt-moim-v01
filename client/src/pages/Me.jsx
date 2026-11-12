@@ -72,7 +72,7 @@ function NotificationsRow() {
 
 export default function Me() {
   const { me, setMe, logout } = useAuth();
-  const [form, setForm] = useState({ name: me.name, phone: me.phone, email: me.email, address: me.address, note: me.note, comment: me.comment });
+  const [form, setForm] = useState({ name: me.name, phone: me.phone, phone2: me.phone2 || '', email: me.email, address: me.address, note: me.note, comment: me.comment });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
@@ -98,6 +98,7 @@ export default function Me() {
         <form onSubmit={save} className="card space-y-4 p-4">
           <div><label className="label">Name</label><input className="input" required value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
           <div><label className="label">Phone</label><input className="input" type="tel" inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: formatPhone(e.target.value) })} placeholder="214-555-1234" /></div>
+          <div><label className="label">Phone 2</label><input className="input" type="tel" inputMode="tel" value={form.phone2} onChange={(e) => setForm({ ...form, phone2: formatPhone(e.target.value) })} placeholder="Optional second number" /></div>
           <div><label className="label">Email</label><input className="input" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="you@example.com" /></div>
           <div><label className="label">Address</label><input className="input" autoComplete="street-address" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Street, city" /></div>
           <div><label className="label">Note</label><textarea className="input min-h-20" rows={3} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} /></div>

@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS members (
   name             TEXT NOT NULL,
   relationship     TEXT NOT NULL DEFAULT '',
   phone            TEXT NOT NULL DEFAULT '',
+  phone2           TEXT NOT NULL DEFAULT '',
   email            TEXT NOT NULL DEFAULT '',
   address          TEXT NOT NULL DEFAULT '',
   note             TEXT NOT NULL DEFAULT '',
@@ -23,6 +24,7 @@ CREATE TABLE IF NOT EXISTS members (
 ALTER TABLE members ADD COLUMN IF NOT EXISTS address TEXT NOT NULL DEFAULT '';
 ALTER TABLE members ADD COLUMN IF NOT EXISTS note    TEXT NOT NULL DEFAULT '';
 ALTER TABLE members ADD COLUMN IF NOT EXISTS comment TEXT NOT NULL DEFAULT '';
+ALTER TABLE members ADD COLUMN IF NOT EXISTS phone2  TEXT NOT NULL DEFAULT '';
 
 CREATE TABLE IF NOT EXISTS settings (
   key   TEXT PRIMARY KEY,

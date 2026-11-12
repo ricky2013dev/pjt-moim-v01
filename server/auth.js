@@ -40,7 +40,7 @@ export async function requireAuth(req, res, next) {
     return res.status(401).json({ error: 'Session expired' });
   }
   const { rows } = await query(
-    `SELECT id, name, phone, email, address, note, comment, role, passcode_version, photo_version,
+    `SELECT id, name, phone, phone2, email, address, note, comment, role, passcode_version, photo_version,
        (photo IS NOT NULL) AS has_photo
      FROM members WHERE id = $1`,
     [payload.sub],

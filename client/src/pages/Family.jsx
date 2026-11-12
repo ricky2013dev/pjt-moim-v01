@@ -5,6 +5,7 @@ import { useAuth } from '../lib/auth.jsx';
 import { PageHeader, ErrorText } from '../components/Layout.jsx';
 import Avatar from '../components/Avatar.jsx';
 import Icon from '../components/Icon.jsx';
+import PhoneAction from '../components/PhoneAction.jsx';
 
 export default function Family() {
   const { me } = useAuth();
@@ -14,7 +15,7 @@ export default function Family() {
 
   useEffect(() => { api('/members').then(setMembers).catch((e) => setError(e.message)); }, []);
 
-  const shown = members?.filter((m) => `${m.name} ${m.phone} ${m.email} ${m.address}`.toLowerCase().includes(q.toLowerCase()));
+  const shown = members?.filter((m) => `${m.name} ${m.phone} ${m.phone2} ${m.email} ${m.address}`.toLowerCase().includes(q.toLowerCase()));
 
   return (
     <>
@@ -29,22 +30,22 @@ export default function Family() {
                 <Avatar member={m} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold">{m.name}{m.id === me.id && <span className="ml-1 text-sm font-normal text-muted">(you)</span>}</p>
-                  <p className="truncate text-sm text-muted">{m.phone || m.email || m.address || '—'}</p>
+                  <p className="truncate text-sm text-muted">{[m.phone, m.phone2].filter(Boolean).join(' · ') || m.email || m.address || '—'}</p>
                 </div>
                 {m.address && (
                   <a href={mapUrl(m.address)} target="_blank" rel="noreferrer" onClick={(e) => e.stopPropagation()} className="rounded-full bg-amber-50 p-2.5 text-amber-700" aria-label={`Open ${m.name}’s address in maps`}>
                     <Icon name="map" className="size-5" />
                   </a>
                 )}
-                {m.phone && m.id !== me.id && (
-                  <a href={`tel:${m.phone}`} onClick={(e) => e.stopPropagation()} className="rounded-full bg-emerald-50 p-2.5 text-emerald-700" aria-label={`Call ${m.name}`}>
+                {m.id !== me.id && (
+                  <PhoneAction member={m} kind="call" className="rounded-full bg-emerald-50 p-2.5 text-emerald-700" label={`Call ${m.name}`}>
                     <Icon name="phone" className="size-5" />
-                  </a>
+                  </PhoneAction>
                 )}
-                {m.phone && m.id !== me.id && (
-                  <a href={`sms:${m.phone.replace(/(?!^\+)[^\d]/g, '')}`} onClick={(e) => e.stopPropagation()} className="rounded-full bg-sky-50 p-2.5 text-sky-700" aria-label={`Text ${m.name}`}>
+                {m.id !== me.id && (
+                  <PhoneAction member={m} kind="sms" className="rounded-full bg-sky-50 p-2.5 text-sky-700" label={`Text ${m.name}`}>
                     <Icon name="sms" className="size-5" />
-                  </a>
+                  </PhoneAction>
                 )}
                 <Icon name="chevron" className="size-5 text-muted/60" />
               </Link>

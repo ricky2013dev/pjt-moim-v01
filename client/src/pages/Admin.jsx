@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api, timeAgo, uploadPhoto, formatPhone } from '../lib/api.js';
+import { api, timeAgo, uploadPhoto, formatPhone, cleanPhone, phonesOf } from '../lib/api.js';
 import { useAuth } from '../lib/auth.jsx';
 import { PageHeader, Empty, ErrorText } from '../components/Layout.jsx';
 import Avatar from '../components/Avatar.jsx';
@@ -51,7 +51,7 @@ function MembersTab({ members, reload }) {
                   {m.name}
                   {m.role === 'admin' && <span className="ml-2 rounded-full bg-brand-50 px-2 py-0.5 text-xs font-bold text-brand-700">Admin</span>}
                 </p>
-                <p className="truncate text-sm text-muted">{m.phone || m.email || '—'}</p>
+                <p className="truncate text-sm text-muted">{[m.phone, m.phone2].filter(Boolean).join(' · ') || m.email || '—'}</p>
               </div>
               <Icon name="edit" className="size-5 text-muted" />
             </button>
@@ -68,7 +68,7 @@ function MemberEditor({ target, onClose, reload }) {
   const isNew = target === 'new';
   const [member, setMember] = useState(isNew ? null : target);
   const [form, setForm] = useState(() => ({
-    name: target?.name || '', phone: target?.phone || '', email: target?.email || '', address: target?.address || '', note: target?.note || '', comment: target?.comment || '', role: target?.role || 'member',
+    name: target?.name || '', phone: target?.phone || '', phone2: target?.phone2 || '', email: target?.email || '', address: target?.address || '', note: target?.note || '', comment: target?.comment || '', role: target?.role || 'member',
   }));
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -132,6 +132,7 @@ function MemberEditor({ target, onClose, reload }) {
           <form id="member-form" onSubmit={save} className="space-y-4">
             <div><label className="label">Name *</label><input className="input" required value={form.name} onChange={set('name')} placeholder="e.g. Grandma Kim" autoFocus={isNew} /></div>
             <div><label className="label">Phone</label><input className="input" type="tel" inputMode="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: formatPhone(e.target.value) })} placeholder="214-555-1234" /></div>
+            <div><label className="label">Phone 2</label><input className="input" type="tel" inputMode="tel" value={form.phone2} onChange={(e) => setForm({ ...form, phone2: formatPhone(e.target.value) })} placeholder="Optional second number" /></div>
             <div><label className="label">Email</label><input className="input" type="email" value={form.email} onChange={set('email')} /></div>
             <div><label className="label">Address</label><input className="input" value={form.address} onChange={set('address')} placeholder="Street, city" /></div>
             <div><label className="label">Note</label><textarea className="input min-h-20" rows={3} value={form.note} onChange={set('note')} /></div>
@@ -206,9 +207,6 @@ function NewsTab({ members }) {
   );
 }
 
-// Keep digits and a leading "+" so the Messages app recognizes the number.
-const cleanPhone = (p) => String(p || '').trim().replace(/(?!^\+)[^\d]/g, '');
-
 // Opens the phone's Messages app with every recipient and the text pre-filled.
 // iOS needs the "/open?addresses=" form for more than one recipient.
 function smsUrl(numbers, text) {
@@ -227,10 +225,11 @@ function AnnouncementEditor({ target, members, onClose, onSaved }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const others = members.filter((m) => m.id !== me.id);
-  const withPhone = others.filter((m) => cleanPhone(m.phone));
+  // One entry per number, so a member with two phones can be texted on either or both.
+  const withPhone = others.flatMap((m) => phonesOf(m).map((p, i) => ({ key: `${m.id}:${i}`, member: m, ...p, primary: i === 0 })));
 
   const [sendSms, setSendSms] = useState(false);
-  const [smsIds, setSmsIds] = useState(() => new Set(withPhone.map((m) => m.id)));
+  const [smsIds, setSmsIds] = useState(() => new Set(withPhone.filter((p) => p.primary).map((p) => p.key))); // first number of each member
   const [extra, setExtra] = useState([]); // manually entered numbers
   const [manual, setManual] = useState('');
   const [smsLink, setSmsLink] = useState(null); // set after posting, when SMS is on
@@ -246,7 +245,7 @@ function AnnouncementEditor({ target, members, onClose, onSaved }) {
   };
 
   const smsNumbers = () => [...new Set([
-    ...withPhone.filter((m) => smsIds.has(m.id)).map((m) => cleanPhone(m.phone)),
+    ...withPhone.filter((p) => smsIds.has(p.key)).map((p) => cleanPhone(p.phone)),
     ...extra,
     ...(manual.trim() ? manual.split(/[,;\n]/).map(cleanPhone).filter(Boolean) : []),
   ])];
@@ -326,21 +325,21 @@ function AnnouncementEditor({ target, members, onClose, onSaved }) {
               {withPhone.length > 0 ? (
                 <>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted">{withPhone.filter((m) => smsIds.has(m.id)).length} of {withPhone.length} with a phone number</span>
+                    <span className="text-muted">{withPhone.filter((p) => smsIds.has(p.key)).length} of {withPhone.length} numbers selected</span>
                     <button type="button" className="font-semibold text-brand-600"
-                      onClick={() => setSmsIds(smsIds.size === withPhone.length ? new Set() : new Set(withPhone.map((m) => m.id)))}>
+                      onClick={() => setSmsIds(smsIds.size === withPhone.length ? new Set() : new Set(withPhone.map((p) => p.key)))}>
                       {smsIds.size === withPhone.length ? 'Clear all' : 'Select all'}
                     </button>
                   </div>
                   <ul className="divide-y divide-line rounded-xl bg-white ring-1 ring-line">
-                    {withPhone.map((m) => (
-                      <li key={m.id}>
+                    {withPhone.map((p) => (
+                      <li key={p.key}>
                         <label className="flex items-center gap-3 p-3">
-                          <input type="checkbox" className="size-5 accent-brand-600" checked={smsIds.has(m.id)} onChange={() => toggleSms(m.id)} />
-                          <Avatar member={m} size="size-9" className="text-sm" />
+                          <input type="checkbox" className="size-5 accent-brand-600" checked={smsIds.has(p.key)} onChange={() => toggleSms(p.key)} />
+                          <Avatar member={p.member} size="size-9" className="text-sm" />
                           <span className="min-w-0 flex-1">
-                            <span className="block truncate font-medium">{m.name}</span>
-                            <span className="block truncate text-sm text-muted">{m.phone}</span>
+                            <span className="block truncate font-medium">{p.member.name}</span>
+                            <span className="block truncate text-sm text-muted">{p.phone}{!p.primary && ' · Phone 2'}</span>
                           </span>
                         </label>
                       </li>

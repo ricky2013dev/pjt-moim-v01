@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { api, mapUrl } from '../lib/api.js';
+import { api, mapUrl, phonesOf } from '../lib/api.js';
 import { useAuth } from '../lib/auth.jsx';
 import { PageHeader, ErrorText } from '../components/Layout.jsx';
 import Avatar from '../components/Avatar.jsx';
 import Icon from '../components/Icon.jsx';
+import PhoneAction from '../components/PhoneAction.jsx';
+
+const actionCls = 'flex flex-col items-center gap-1.5 rounded-2xl p-3 text-sm font-semibold';
 
 function Action({ href, to, icon, label, tint }) {
-  const cls = `flex flex-col items-center gap-1.5 rounded-2xl p-3 text-sm font-semibold ${tint}`;
+  const cls = `${actionCls} ${tint}`;
   const inner = <><Icon name={icon} className="size-6" />{label}</>;
   return to ? <Link to={to} className={cls}>{inner}</Link> : <a href={href} className={cls}>{inner}</a>;
 }
@@ -26,6 +29,7 @@ export default function MemberDetail() {
   }, [id]);
 
   const isMe = m?.id === me.id;
+  const hasPhone = phonesOf(m).length > 0;
   return (
     <>
       <PageHeader title="" back="/family" />
@@ -39,13 +43,13 @@ export default function MemberDetail() {
             </div>
             {!isMe && (
               <div className="mb-6 grid grid-cols-3 gap-2">
-                {m.phone ? <Action href={`tel:${m.phone}`} icon="phone" label="Call" tint="bg-emerald-50 text-emerald-700" /> : <span />}
-                {m.phone ? <Action href={`sms:${m.phone}`} icon="sms" label="Text" tint="bg-sky-50 text-sky-700" /> : <span />}
+                {hasPhone ? <PhoneAction member={m} kind="call" className={`${actionCls} bg-emerald-50 text-emerald-700`}><Icon name="phone" className="size-6" />Call</PhoneAction> : <span />}
+                {hasPhone ? <PhoneAction member={m} kind="sms" className={`${actionCls} bg-sky-50 text-sky-700`}><Icon name="sms" className="size-6" />Text</PhoneAction> : <span />}
                 {m.email ? <Action href={`mailto:${m.email}`} icon="mail" label="Email" tint="bg-violet-50 text-violet-700" /> : <span />}
               </div>
             )}
             <dl className="card divide-y divide-line">
-              {[['Phone', m.phone], ['Email', m.email]].map(([k, v]) => (
+              {[['Phone', m.phone], ...(m.phone2 ? [['Phone 2', m.phone2]] : []), ['Email', m.email]].map(([k, v]) => (
                 <div key={k} className="flex justify-between gap-4 p-4">
                   <dt className="text-muted">{k}</dt>
                   <dd className="truncate text-right font-medium">{v || '—'}</dd>

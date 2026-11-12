@@ -17,6 +17,7 @@ const REQUIRED_APPLICATION_COLUMNS = {
     'id',
     'name',
     'phone',
+    'phone2',
     'email',
     'address',
     'note',
