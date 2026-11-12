@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS members (
   address          TEXT NOT NULL DEFAULT '',
   note             TEXT NOT NULL DEFAULT '',
   comment          TEXT NOT NULL DEFAULT '',
+  sort_order       INTEGER NOT NULL DEFAULT 0,
   role             TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin', 'member')),
   passcode_hash    TEXT NOT NULL,
   passcode_version INTEGER NOT NULL DEFAULT 1,
@@ -25,6 +26,7 @@ ALTER TABLE members ADD COLUMN IF NOT EXISTS address TEXT NOT NULL DEFAULT '';
 ALTER TABLE members ADD COLUMN IF NOT EXISTS note    TEXT NOT NULL DEFAULT '';
 ALTER TABLE members ADD COLUMN IF NOT EXISTS comment TEXT NOT NULL DEFAULT '';
 ALTER TABLE members ADD COLUMN IF NOT EXISTS phone2  TEXT NOT NULL DEFAULT '';
+ALTER TABLE members ADD COLUMN IF NOT EXISTS sort_order INTEGER NOT NULL DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS settings (
   key   TEXT PRIMARY KEY,

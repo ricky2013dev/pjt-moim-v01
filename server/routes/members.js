@@ -67,7 +67,8 @@ async function setPasscode(id, hash) {
 
 // ---- Contacts ----
 r.get('/members', async (_req, res) => {
-  const { rows } = await query(`SELECT ${COLS} FROM members ORDER BY role = 'admin' DESC, name`);
+  // sort_order is set by admins dragging the list; ties (e.g. before anyone has sorted) fall back to admins first, then name.
+  const { rows } = await query(`SELECT ${COLS} FROM members ORDER BY sort_order, role = 'admin' DESC, name`);
   res.json(rows.map(publicMember));
 });
 
@@ -130,12 +131,25 @@ r.post('/admin/members', requireAdmin, async (req, res) => {
   const role = req.body?.role === 'admin' ? 'admin' : 'member';
   const hash = await getSetting('default_passcode_hash');
   const { rows } = await query(
-    `INSERT INTO members (name, phone, phone2, email, address, note, comment, role, passcode_hash)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id`,
+    `INSERT INTO members (name, phone, phone2, email, address, note, comment, role, passcode_hash, sort_order)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, (SELECT COALESCE(MAX(sort_order), 0) + 1 FROM members)) RETURNING id`,
     [fields.name, fields.phone || '', fields.phone2 || '', fields.email || '',
       fields.address || '', fields.note || '', fields.comment || '', role, hash],
   );
   res.status(201).json(await getMember(rows[0].id));
+});
+
+// Saves the order the admin dragged the list into. ids is every member, top to bottom.
+r.put('/admin/members/order', requireAdmin, async (req, res) => {
+  const ids = Array.isArray(req.body?.ids) ? req.body.ids.map(Number) : [];
+  if (!ids.length || ids.some((id) => !Number.isInteger(id)) || new Set(ids).size !== ids.length) {
+    return res.status(400).json({ error: 'Send each member id once, in order.' });
+  }
+  await query(
+    `UPDATE members m SET sort_order = x.ord FROM unnest($1::int[]) WITH ORDINALITY AS x(id, ord) WHERE m.id = x.id`,
+    [ids],
+  );
+  res.json({ ok: true });
 });
 
 r.patch('/admin/members/:id', requireAdmin, async (req, res) => {

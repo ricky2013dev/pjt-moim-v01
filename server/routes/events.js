@@ -19,7 +19,7 @@ r.get('/events', async (_req, res) => {
                        'id', m.id, 'name', m.name, 'has_photo', m.photo IS NOT NULL, 'photo_version', m.photo_version,
                        'status', v.status, 'adults', COALESCE(v.adults, 0), 'kids', COALESCE(v.kids, 0),
                        'updated_at', v.updated_at)
-                     ORDER BY m.name)
+                     ORDER BY m.sort_order, m.role = 'admin' DESC, m.name)
               FROM members m
               LEFT JOIN event_rsvps v ON v.event_id = e.id AND v.member_id = m.id
             ), '[]') AS responses

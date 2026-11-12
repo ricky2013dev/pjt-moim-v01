@@ -22,6 +22,7 @@ const REQUIRED_APPLICATION_COLUMNS = {
     'address',
     'note',
     'comment',
+    'sort_order',
     'role',
     'passcode_hash',
     'passcode_version',

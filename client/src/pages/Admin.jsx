@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api, timeAgo, uploadPhoto, formatPhone, cleanPhone, phonesOf } from '../lib/api.js';
 import { useAuth } from '../lib/auth.jsx';
 import { PageHeader, Empty, ErrorText } from '../components/Layout.jsx';
@@ -38,13 +38,32 @@ export default function Admin() {
 // ---------------- Members ----------------
 function MembersTab({ members, reload }) {
   const [editing, setEditing] = useState(null); // null | 'new' | member
+  const [order, setOrder] = useState(null); // shown order while a drag result is being saved
+  const [error, setError] = useState('');
+  const list = order || members;
+
+  const saveOrder = async (next) => {
+    setOrder(next); setError('');
+    try { await api('/admin/members/order', { method: 'PUT', body: { ids: next.map((m) => m.id) } }); await reload(); }
+    catch (e) { setError(e.message); }
+    finally { setOrder(null); }
+  };
+  const drag = useDragSort(list, saveOrder);
+
   return (
     <>
       <button className="btn-primary mb-3 w-full" onClick={() => setEditing('new')}><Icon name="plus" className="size-5" />Add family member</button>
-      <ul className="card divide-y divide-line overflow-hidden">
-        {members?.map((m) => (
-          <li key={m.id}>
-            <button className="flex w-full items-center gap-3 p-3 text-left active:bg-brand-50" onClick={() => setEditing(m)}>
+      <p className="mb-2 flex items-center gap-1 text-xs text-muted"><Icon name="grip" className="size-4" strokeWidth={3} />Drag to set the order everyone sees.</p>
+      <ErrorText>{error}</ErrorText>
+      <ul className="card divide-y divide-line">
+        {list?.map((m, i) => (
+          <li key={m.id} ref={drag.rowRef(i)} style={drag.style(i)}
+            className={`relative bg-white first:rounded-t-2xl last:rounded-b-2xl ${drag.active === i ? 'z-10 shadow-xl ring-2 ring-brand-500' : ''}`}>
+            <div className="flex items-center">
+            <span {...drag.handle(i)} className="grid h-full cursor-grab touch-none place-items-center self-stretch py-3 pr-1 pl-3 text-muted/70 active:cursor-grabbing" aria-label={`Drag to move ${m.name}`}>
+              <Icon name="grip" className="size-5" strokeWidth={3} />
+            </span>
+            <button className="flex min-w-0 flex-1 items-center gap-3 py-3 pr-3 pl-1 text-left active:bg-brand-50" onClick={() => setEditing(m)}>
               <Avatar member={m} />
               <div className="min-w-0 flex-1">
                 <p className="truncate font-semibold">
@@ -55,12 +74,90 @@ function MembersTab({ members, reload }) {
               </div>
               <Icon name="edit" className="size-5 text-muted" />
             </button>
+            </div>
           </li>
         ))}
       </ul>
       <MemberEditor key={editing?.id || editing} target={editing} onClose={() => setEditing(null)} reload={reload} />
     </>
   );
+}
+
+// Drag-to-reorder for a vertical list, with mouse or touch, started from a handle.
+// Rows don't move in the DOM while dragging: the dragged row follows the pointer and the
+// rows it passes slide out of the way. The new order is handed to onDrop on release.
+function useDragSort(items, onDrop) {
+  const rows = useRef([]);
+  const st = useRef(null);
+  const [drag, setDrag] = useState(null); // { from, to, dy, h }
+
+  // Page-space position of the pointer, so scrolling during a drag is accounted for.
+  const pageY = (clientY) => clientY + window.scrollY;
+
+  const update = () => {
+    const s = st.current;
+    if (!s) return;
+    const dy = pageY(s.clientY) - s.startY;
+    const center = s.rects[s.from].top + s.rects[s.from].h / 2 + dy;
+    let to = 0;
+    s.rects.forEach((r, i) => { if (i !== s.from && r.top + r.h / 2 < center) to += 1; });
+    s.last = { from: s.from, to, dy, h: s.rects[s.from].h };
+    setDrag(s.last);
+  };
+
+  // Scroll the page while the pointer is held near the top or bottom edge.
+  const autoScroll = () => {
+    const s = st.current;
+    if (!s) return;
+    const edge = s.clientY < 150 ? -1 : s.clientY > window.innerHeight - 140 ? 1 : 0;
+    if (edge) { window.scrollBy(0, edge * 10); update(); }
+    s.raf = requestAnimationFrame(autoScroll);
+  };
+
+  const end = (commit) => {
+    const s = st.current;
+    if (!s) return;
+    cancelAnimationFrame(s.raf);
+    st.current = null;
+    setDrag(null);
+    const d = s.last;
+    if (commit && d && d.to !== d.from) {
+      const next = [...items];
+      next.splice(d.to, 0, next.splice(d.from, 1)[0]);
+      onDrop(next);
+    }
+  };
+
+  useEffect(() => () => st.current && cancelAnimationFrame(st.current.raf), []);
+
+  return {
+    active: drag?.from,
+    rowRef: (i) => (el) => { rows.current[i] = el; },
+    handle: (i) => ({
+      onPointerDown: (e) => {
+        if (e.button !== 0) return;
+        e.preventDefault();
+        e.currentTarget.setPointerCapture(e.pointerId);
+        const rects = items.map((_, j) => {
+          const r = rows.current[j].getBoundingClientRect();
+          return { top: pageY(r.top), h: r.height };
+        });
+        st.current = { from: i, rects, startY: pageY(e.clientY), clientY: e.clientY };
+        st.current.raf = requestAnimationFrame(autoScroll);
+        update();
+      },
+      onPointerMove: (e) => { if (st.current) { st.current.clientY = e.clientY; update(); } },
+      onPointerUp: () => end(true),
+      onPointerCancel: () => end(false),
+    }),
+    style: (i) => {
+      if (!drag) return undefined;
+      const { from, to, dy, h } = drag;
+      if (i === from) return { transform: `translateY(${dy}px)` };
+      const shift = from < to && i > from && i <= to ? -h : to < from && i >= to && i < from ? h : 0;
+      return { transform: `translateY(${shift}px)`, transition: 'transform 150ms ease' };
+    },
+  };
 }
 
 function MemberEditor({ target, onClose, reload }) {

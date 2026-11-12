@@ -15,7 +15,7 @@ r.get('/announcements', async (req, res) => {
     `SELECT a.id, a.title, a.body, a.audience, a.created_at, a.updated_at,
             au.name AS author_name,
             (rd.member_id IS NOT NULL) AS read,
-            COALESCE((SELECT json_agg(json_build_object('id', m.id, 'name', m.name) ORDER BY m.name)
+            COALESCE((SELECT json_agg(json_build_object('id', m.id, 'name', m.name) ORDER BY m.sort_order, m.name)
                       FROM announcement_targets t JOIN members m ON m.id = t.member_id
                       WHERE t.announcement_id = a.id), '[]') AS targets
      FROM announcements a
